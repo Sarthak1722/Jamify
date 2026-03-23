@@ -7,6 +7,7 @@ import DiscoverPage from "./pages/DiscoverPage.jsx";
 import MessagesPage from "./pages/MessagesPage.jsx";
 import LikedMusicPage from "./pages/LikedMusicPage.jsx";
 import PlaylistsPage from "./pages/PlaylistsPage.jsx";
+import PlaylistDetailPage from "./pages/PlaylistDetailPage.jsx";
 import RoomsPage from "./pages/RoomsPage.jsx";
 import { useChatSocket } from "./hooks/useChatSocket.js";
 
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: "rooms", element: <RoomsPage /> },
       { path: "liked", element: <LikedMusicPage /> },
       { path: "playlists", element: <PlaylistsPage /> },
+      { path: "playlists/:id", element: <PlaylistDetailPage /> },
     ],
   },
 ]);

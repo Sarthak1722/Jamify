@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   IoPlay,
   IoPause,
@@ -10,6 +10,7 @@ import { usePlaybackActions } from "./PlaybackActionsProvider.jsx";
 import { usePlaybackAudioSync } from "../../hooks/usePlaybackAudioSync.js";
 import { effectivePlaybackTime } from "../../utils/playbackTime.js";
 import { fetchPlaybackTracks } from "../../api/playbackApi.js";
+import { setPlaybackQueueIndex } from "../../redux/playbackSlice.js";
 
 function formatTime(sec) {
   if (!Number.isFinite(sec) || sec < 0) return "0:00";
@@ -20,7 +21,7 @@ function formatTime(sec) {
 
 function jamSubtitle(activeJam, playbackRoomId) {
   if (!activeJam) {
-    return "Open Messages (DM) or Jam rooms to pick a sync target";
+    return "Solo playback";
   }
   if (activeJam.kind === "dm") {
     return `DM jam · ${activeJam.label} · ${playbackRoomId || "pair room"}`;
@@ -30,7 +31,10 @@ function jamSubtitle(activeJam, playbackRoomId) {
 
 const GlobalPlaybackBar = () => {
   const audioRef = useRef(null);
+  const dispatch = useDispatch();
   const playback = useSelector((s) => s.playback);
+  const queue = playback.queue || [];
+  const queueIndex = Number.isFinite(playback.queueIndex) ? playback.queueIndex : -1;
   const activeJam = useSelector((s) => s.rooms.activeJam);
   const authUser = useSelector((s) => s.user.authUser);
 
@@ -39,6 +43,7 @@ const GlobalPlaybackBar = () => {
     emitPause,
     emitSeek,
     emitChangeTrack,
+    emitPlaySelection,
     emitNextTrack,
     emitPrevTrack,
     hasActiveJam,
@@ -82,6 +87,33 @@ const GlobalPlaybackBar = () => {
     setSeekPreview(null);
   }, [seekPreview, emitSeek]);
 
+  const handleTrackEnd = useCallback(() => {
+    if (hasActiveJam) {
+      emitNextTrack();
+      return;
+    }
+
+    if (queue.length > 0 && playback.currentTrack) {
+      const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
+      const nextIndex = (currentIndex + 1) % queue.length;
+      const nextTrack = queue[nextIndex];
+      if (nextTrack) {
+        dispatch(setPlaybackQueueIndex(nextIndex));
+        emitChangeTrack(nextTrack.id, nextTrack);
+      }
+      return;
+    }
+
+    if (!catalog.length || !playback.currentTrack) return;
+    const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
+    if (currentIndex >= 0) {
+      const next = catalog[(currentIndex + 1) % catalog.length];
+      if (next) {
+        emitChangeTrack(next.id, next);
+      }
+    }
+  }, [hasActiveJam, emitNextTrack, queue, queueIndex, playback.currentTrack, catalog, dispatch, emitChangeTrack]);
+
   const onSeekInput = useCallback((e) => {
     setSeekPreview(Number(e.target.value));
   }, []);
@@ -90,7 +122,7 @@ const GlobalPlaybackBar = () => {
 
   return (
     <div className="shrink-0 border-t border-white/[0.08] bg-[#121212]/98 px-4 py-3 backdrop-blur-xl">
-      <audio ref={audioRef} preload="auto" className="hidden" />
+      <audio ref={audioRef} preload="auto" className="hidden" onEnded={handleTrackEnd} />
 
       <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -114,8 +146,28 @@ const GlobalPlaybackBar = () => {
           <div className="flex items-center justify-center gap-4">
             <button
               type="button"
-              disabled={!hasActiveJam}
-              onClick={() => emitPrevTrack()}
+              onClick={() => {
+                if (hasActiveJam) {
+                  emitPrevTrack();
+                  return;
+                }
+                if (queue.length > 0 && playback.currentTrack) {
+                  const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
+                  const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+                  const prevTrack = queue[prevIndex];
+                  if (prevTrack) {
+                    dispatch(setPlaybackQueueIndex(prevIndex));
+                    emitChangeTrack(prevTrack.id, prevTrack);
+                  }
+                  return;
+                }
+                if (!catalog.length || !playback.currentTrack) return;
+                const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
+                if (currentIndex > 0) {
+                  const prev = catalog[currentIndex - 1];
+                  emitChangeTrack(prev.id, prev);
+                }
+              }}
               className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
               aria-label="Previous track"
             >
@@ -123,7 +175,7 @@ const GlobalPlaybackBar = () => {
             </button>
             <button
               type="button"
-              disabled={!hasActiveJam}
+              disabled={!playback.currentTrack}
               onClick={() => (playback.isPlaying ? emitPause() : emitPlay())}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:opacity-30"
               aria-label={playback.isPlaying ? "Pause" : "Play"}
@@ -136,8 +188,28 @@ const GlobalPlaybackBar = () => {
             </button>
             <button
               type="button"
-              disabled={!hasActiveJam}
-              onClick={() => emitNextTrack()}
+              onClick={() => {
+                if (hasActiveJam) {
+                  emitNextTrack();
+                  return;
+                }
+                if (queue.length > 0 && playback.currentTrack) {
+                  const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
+                  const nextIndex = (currentIndex + 1) % queue.length;
+                  const nextTrack = queue[nextIndex];
+                  if (nextTrack) {
+                    dispatch(setPlaybackQueueIndex(nextIndex));
+                    emitChangeTrack(nextTrack.id, nextTrack);
+                  }
+                  return;
+                }
+                if (!catalog.length || !playback.currentTrack) return;
+                const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
+                if (currentIndex >= 0) {
+                  const next = catalog[(currentIndex + 1) % catalog.length];
+                  emitChangeTrack(next.id, next);
+                }
+              }}
               className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
               aria-label="Next track"
             >
@@ -151,7 +223,7 @@ const GlobalPlaybackBar = () => {
               min={0}
               max={maxDur}
               step={0.25}
-              disabled={!hasActiveJam || !playback.currentTrack}
+              disabled={!playback.currentTrack}
               value={Math.min(displayTime, maxDur)}
               onChange={onSeekInput}
               onMouseUp={onSeekPointerUp}
@@ -164,11 +236,14 @@ const GlobalPlaybackBar = () => {
 
         <div className="flex min-w-[140px] items-center justify-end">
           <select
-            disabled={!hasActiveJam || catalog.length === 0}
+            disabled={catalog.length === 0}
             value={playback.currentTrack?.id || ""}
             onChange={(e) => {
               const id = e.target.value;
-              if (id) emitChangeTrack(id);
+              if (!id) return;
+              const trackIndex = catalog.findIndex((t) => t.id === id);
+              if (trackIndex < 0) return;
+              emitPlaySelection(catalog, trackIndex);
             }}
             className="max-w-full rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-white disabled:opacity-30"
           >

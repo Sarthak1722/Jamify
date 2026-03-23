@@ -14,9 +14,11 @@ const isAuthenticated = async(req, res, next) => {
         };
         // console.log(decode);
         req.id = decode.userID;
+        req.user = { _id: decode.userID }; // Add req.user for compatibility
         next();
     }catch(error){
         console.log(error);
+        return res.status(401).json({message: "Authentication failed."});
     }
 };
 

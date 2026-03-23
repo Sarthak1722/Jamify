@@ -31,6 +31,8 @@ export function toPlaybackTrack(track) {
     id: track.id,
     title: track.title,
     artist: track.artist,
+    album: track.album,
+    duration: track.duration,
     url: `/songs/${track.file}`,
   };
 }

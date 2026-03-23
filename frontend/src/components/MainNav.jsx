@@ -105,7 +105,7 @@ const MainNav = () => {
           {({ isActive }) => (
             <>
               <NavIcon active={isActive} ActiveIcon={IoHeart} InactiveIcon={IoHeartOutline} />
-              Liked songs
+              Songs
             </>
           )}
         </NavLink>

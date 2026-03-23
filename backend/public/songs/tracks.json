@@ -4,25 +4,37 @@
       "id": "local-1",
       "title": "Raabta",
       "artist": "Arijit Singh",
-      "file": "Raabta.mp3"
+      "file": "Raabta.mp3",
+      "album": "Agent Vinod",
+      "duration": "3:00",
+      "url": "/songs/Raabta.mp3"
     },
     {
       "id": "local-2",
       "title": "Believe",
       "artist": "When Chai Met Toast",
-      "file": "Believe.mp3"
+      "file": "Believe.mp3",
+      "album": "When Chai Met Toast",
+      "duration": "3:45",
+      "url": "/songs/Believe.mp3"
     },
     {
       "id": "local-3",
       "title": "Khoj",
       "artist": "When Chai Met Toast",
-      "file": "Khoj.mp3"
+      "file": "Khoj.mp3",
+      "album": "When Chai Met Toast",
+      "duration": "4:12",
+      "url": "/songs/Khoj.mp3"
     },
     {
       "id": "local-4",
       "title": "Fix You",
       "artist": "Coldplay",
-      "file": "Fix_You.mp3"
+      "file": "Fix_You.mp3",
+      "album": "X&Y",
+      "duration": "4:55",
+      "url": "/songs/Fix_You.mp3"
     }
   ]
 }

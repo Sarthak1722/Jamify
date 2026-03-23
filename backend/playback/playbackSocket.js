@@ -3,6 +3,7 @@ import {
   applyPlay,
   applyPause,
   applySeek,
+  applyPlaySelection,
   applyChangeTrack,
   applyNextTrack,
   applyPrevTrack,
@@ -79,6 +80,11 @@ export function attachPlaybackSocketHandlers(io, socket, userId) {
   socket.on("changeTrack", (payload) => {
     if (!payload?.trackId) return;
     void guard(payload, (roomId) => applyChangeTrack(roomId, userId, payload.trackId));
+  });
+
+  socket.on("playSelection", (payload) => {
+    if (!Array.isArray(payload?.tracks) || payload.tracks.length === 0) return;
+    void guard(payload, (roomId) => applyPlaySelection(roomId, userId, payload.tracks, payload.startIndex));
   });
 
   socket.on("nextTrack", (payload) => {

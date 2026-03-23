@@ -7,6 +7,7 @@ import userRoute from "./routes/userRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import playbackRoute from "./routes/playbackRoute.js";
 import roomRoute from "./routes/roomRoute.js";
+import playlistRoute from "./routes/playlistRoute.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { app, server } from "./socket/socket.js";
@@ -33,6 +34,7 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/message", messageRoute);
 app.use("/api/v1/playback", playbackRoute);
 app.use("/api/v1/rooms", roomRoute);
+app.use("/api/v1/playlists", playlistRoute);
 
 server.listen(PORT, "0.0.0.0", () => {
   connectDB();
