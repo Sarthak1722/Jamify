@@ -4,6 +4,7 @@ node_modules/
 # Build output
 
 backend/dist/
+frontend/dist/
 
 # Env (keep .env.example if you add one)
 .env

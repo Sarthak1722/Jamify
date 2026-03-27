@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setotherUsers } from "../redux/userSlice.js";
 import { useSocket } from "../context/SocketContext.jsx";

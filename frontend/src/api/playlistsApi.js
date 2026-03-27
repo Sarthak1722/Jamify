@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "./client.js";
 
 function normalizeTrack(track) {
   if (!track) {
@@ -44,9 +42,7 @@ function normalizePlaylist(playlist) {
  * Get all playlists for the current user
  */
 export async function fetchUserPlaylists() {
-  const { data } = await axios.get(`${API_URL}/api/v1/playlists`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.get("/api/v1/playlists");
   return data.success ? data.playlists.map(normalizePlaylist) : [];
 }
 
@@ -54,9 +50,7 @@ export async function fetchUserPlaylists() {
  * Create a new playlist
  */
 export async function createPlaylist(playlistData) {
-  const { data } = await axios.post(`${API_URL}/api/v1/playlists`, playlistData, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.post("/api/v1/playlists", playlistData);
   return data.success ? normalizePlaylist(data.playlist) : null;
 }
 
@@ -64,9 +58,7 @@ export async function createPlaylist(playlistData) {
  * Get a specific playlist with full details
  */
 export async function fetchPlaylist(playlistId) {
-  const { data } = await axios.get(`${API_URL}/api/v1/playlists/${playlistId}`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.get(`/api/v1/playlists/${playlistId}`);
   return data.success ? normalizePlaylist(data.playlist) : null;
 }
 
@@ -74,9 +66,7 @@ export async function fetchPlaylist(playlistId) {
  * Update playlist metadata
  */
 export async function updatePlaylist(playlistId, updateData) {
-  const { data } = await axios.put(`${API_URL}/api/v1/playlists/${playlistId}`, updateData, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.put(`/api/v1/playlists/${playlistId}`, updateData);
   return data.success ? normalizePlaylist(data.playlist) : null;
 }
 
@@ -84,9 +74,7 @@ export async function updatePlaylist(playlistId, updateData) {
  * Delete a playlist
  */
 export async function deletePlaylist(playlistId) {
-  const { data } = await axios.delete(`${API_URL}/api/v1/playlists/${playlistId}`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.delete(`/api/v1/playlists/${playlistId}`);
   return data.success;
 }
 
@@ -94,9 +82,7 @@ export async function deletePlaylist(playlistId) {
  * Add a track to a playlist
  */
 export async function addTrackToPlaylist(playlistId, trackData) {
-  const { data } = await axios.post(`${API_URL}/api/v1/playlists/${playlistId}/tracks`, trackData, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.post(`/api/v1/playlists/${playlistId}/tracks`, trackData);
   return data.success ? normalizePlaylist(data.playlist) : null;
 }
 
@@ -104,8 +90,6 @@ export async function addTrackToPlaylist(playlistId, trackData) {
  * Remove a track from a playlist
  */
 export async function removeTrackFromPlaylist(playlistId, trackId) {
-  const { data } = await axios.delete(`${API_URL}/api/v1/playlists/${playlistId}/tracks/${trackId}`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.delete(`/api/v1/playlists/${playlistId}/tracks/${trackId}`);
   return data.success;
 }

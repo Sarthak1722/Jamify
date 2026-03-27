@@ -1,6 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import axios from "axios";
 import toast from "react-hot-toast";
 import {
   IoHomeOutline,
@@ -19,8 +18,7 @@ import { setauthUser, setotherUsers, setselectedUser } from "../redux/userSlice.
 import { resetThread } from "../redux/messageSlice.js";
 import { resetPlayback } from "../redux/playbackSlice.js";
 import { resetRooms } from "../redux/roomsSlice.js";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "../api/client.js";
 
 const navItemClass = ({ isActive }) =>
   [
@@ -41,9 +39,7 @@ const MainNav = () => {
 
   const logoutHandler = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/v1/user/logout`, {
-        withCredentials: true,
-      });
+      const res = await apiClient.get("/api/v1/user/logout");
       toast.success(res.data?.message);
       dispatch(setauthUser(null));
       dispatch(setselectedUser(null));

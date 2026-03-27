@@ -1,26 +1,16 @@
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "./client.js";
 
 export async function listRooms() {
-  const { data } = await axios.get(`${API_URL}/api/v1/rooms`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.get("/api/v1/rooms");
   return Array.isArray(data) ? data : [];
 }
 
 export async function createRoom({ name, memberIds }) {
-  const { data } = await axios.post(
-    `${API_URL}/api/v1/rooms`,
-    { name, memberIds },
-    { withCredentials: true },
-  );
+  const { data } = await apiClient.post("/api/v1/rooms", { name, memberIds });
   return data;
 }
 
 export async function getRoom(id) {
-  const { data } = await axios.get(`${API_URL}/api/v1/rooms/${id}`, {
-    withCredentials: true,
-  });
+  const { data } = await apiClient.get(`/api/v1/rooms/${id}`);
   return data;
 }

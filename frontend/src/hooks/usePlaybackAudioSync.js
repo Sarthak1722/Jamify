@@ -1,15 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { effectivePlaybackTime } from "../utils/playbackTime.js";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { resolveAppUrl } from "../config/runtime.js";
 
 export function fullAudioUrl(urlPath) {
-  if (!urlPath) return "";
-  if (urlPath.startsWith("http")) return urlPath;
-  const base = API_URL.replace(/\/$/, "");
-  const p = urlPath.startsWith("/") ? urlPath : `/${urlPath}`;
-  return `${base}${p}`;
+  return resolveAppUrl(urlPath);
 }
 
 /**

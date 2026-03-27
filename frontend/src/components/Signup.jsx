@@ -1,9 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "../api/client.js";
 
 const Signup = () => {
   const [userData, setUserData] = useState({
@@ -35,11 +33,7 @@ const Signup = () => {
       return toast.error("All fields are required");
     }
     try {
-      const res = await axios.post(
-        `${API_URL}/api/v1/user/register`,
-        userData,
-        { withCredentials: true },
-      );
+      const res = await apiClient.post("/api/v1/user/register", userData);
       if (res.data.success) {
         setUserData({
           fullName: "",

@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useSelector } from "react-redux";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { SOCKET_URL } from "../config/runtime.js";
 
 const SocketContext = createContext(null);
 
@@ -24,10 +23,6 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    if (!API_URL) {
-      console.warn("VITE_API_URL is not set; Socket.IO will not connect.");
-    }
-
     if (!authUserId) {
       setSocket((prev) => {
         if (prev) {
@@ -39,7 +34,7 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const instance = io(API_URL, {
+    const instance = io(SOCKET_URL || undefined, {
       query: { userId: authUserId },
       transports: ["websocket", "polling"],
       reconnection: true,

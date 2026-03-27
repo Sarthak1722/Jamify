@@ -1,10 +1,8 @@
 import { useEffect, useCallback } from "react";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setotherUsers } from "../redux/userSlice.js";
 import { useSocket } from "../context/SocketContext.jsx";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "../api/client.js";
 
 /**
  * Load directory once and again after Socket.IO reconnects so the inbox stays fresh.
@@ -15,7 +13,7 @@ const useGetOtherUsers = () => {
 
   const fetchOtherUsers = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/v1/user/`, { withCredentials: true });
+      const res = await apiClient.get("/api/v1/user");
       dispatch(setotherUsers(res.data));
     } catch (error) {
       console.error("fetchOtherUsers failed", error);

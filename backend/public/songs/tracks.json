@@ -35,6 +35,15 @@
       "album": "X&Y",
       "duration": "4:55",
       "url": "/songs/Fix_You.mp3"
+    },
+    {
+      "id": "local-5",
+      "title": "Constellation",
+      "artist": "When Chai Met Toast",
+      "file": "Constellation.mp3",
+      "album": "X&Y",
+      "duration": "3:15",
+      "url": "/songs/Constellation.mp3"
     }
   ]
 }

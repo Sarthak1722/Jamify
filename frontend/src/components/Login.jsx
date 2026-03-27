@@ -1,10 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import {setauthUser} from '../redux/userSlice.js';
-const API_URL = import.meta.env.VITE_API_URL;
+import apiClient from "../api/client.js";
 
 
 const Login = () => {
@@ -28,11 +27,7 @@ const Login = () => {
         return toast.error("All fields are required");
     }
     try {
-      const res = await axios.post(
-        `${API_URL}/api/v1/user/login`,
-        userData,
-        { withCredentials: true },
-      );
+      const res = await apiClient.post("/api/v1/user/login", userData);
 
       dispatch(setauthUser(res.data));
       
