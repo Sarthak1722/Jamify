@@ -14,3 +14,13 @@ export async function getRoom(id) {
   const { data } = await apiClient.get(`/api/v1/rooms/${id}`);
   return data;
 }
+
+export async function updateRoom(id, payload) {
+  const { data } = await apiClient.patch(`/api/v1/rooms/${id}`, payload);
+  return data;
+}
+
+export async function deleteRoom(id) {
+  const { data } = await apiClient.delete(`/api/v1/rooms/${id}`);
+  return data;
+}

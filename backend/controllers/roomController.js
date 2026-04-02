@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GroupRoom } from "../models/groupRoomModel.js";
 import { User } from "../models/userModel.js";
+import { Message } from "../models/messageModel.js";
 
 function uniqueIds(ids) {
   return [...new Set(ids.map((id) => String(id)).filter(Boolean))];
@@ -80,5 +81,65 @@ export const getRoom = async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Failed to load room" });
+  }
+};
+
+export const updateRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid room id" });
+    }
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ message: "Group name is required" });
+    }
+
+    const room = await GroupRoom.findOne({ _id: id, members: req.id });
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+    if (String(room.createdBy) !== String(req.id)) {
+      return res.status(403).json({ message: "Only the group creator can rename this group" });
+    }
+
+    room.name = String(name).trim();
+    await room.save();
+
+    const populated = await GroupRoom.findById(room._id)
+      .populate("members", "fullName userName profilePhoto")
+      .lean();
+
+    return res.status(200).json(populated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Failed to update room" });
+  }
+};
+
+export const deleteRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid room id" });
+    }
+
+    const room = await GroupRoom.findOne({ _id: id, members: req.id }).select("_id createdBy");
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+    if (String(room.createdBy) !== String(req.id)) {
+      return res.status(403).json({ message: "Only the group creator can delete this group" });
+    }
+
+    await Message.deleteMany({ roomID: room._id });
+    await GroupRoom.deleteOne({ _id: room._id });
+
+    return res.status(200).json({ success: true, roomId: String(room._id) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Failed to delete room" });
   }
 };

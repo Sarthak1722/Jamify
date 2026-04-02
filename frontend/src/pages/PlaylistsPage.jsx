@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { IoAdd, IoMusicalNotes, IoTrash, IoPlay, IoEllipsisVertical, IoChevronUp, IoChevronDown } from "react-icons/io5";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { IoAdd, IoMusicalNotes, IoTrash, IoPlay, IoEllipsisVertical, IoChevronUp, IoChevronDown, IoSparkles, IoTimeOutline } from "react-icons/io5";
 import {
   fetchUserPlaylists,
   createPlaylist,
@@ -27,6 +27,7 @@ function PlaylistsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const editInputRef = useRef(null);
   const openMenuRef = useRef(null);
+  const ambientLabels = ["Freshly arranged", "Evening-ready", "Replay-safe", "Smooth transitions"];
 
   useEffect(() => {
     loadData();
@@ -255,6 +256,20 @@ function PlaylistsPage() {
     }
   };
 
+  const libraryStats = useMemo(() => {
+    const totalPlaylists = playlists.length;
+    const totalTracks = playlists.reduce((sum, playlist) => {
+      const songs = getPlaylistSongs(playlist);
+      return sum + Math.max(playlist.trackCount || 0, songs.length);
+    }, 0);
+
+    return {
+      totalPlaylists,
+      totalTracks,
+      featuredLabel: ambientLabels[totalPlaylists % ambientLabels.length],
+    };
+  }, [playlists]);
+
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -274,6 +289,18 @@ function PlaylistsPage() {
             <p className="mt-1 text-sm text-zinc-400">
               Create and manage your playlists. Click on any playlist to view and play tracks.
             </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs text-zinc-400">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                {libraryStats.totalPlaylists} playlists
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                {libraryStats.totalTracks} total tracks
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                <IoSparkles className="text-emerald-400" />
+                {libraryStats.featuredLabel}
+              </span>
+            </div>
           </div>
           <button
             type="button"
@@ -288,6 +315,32 @@ function PlaylistsPage() {
       </header>
 
       <div className="mx-auto w-full max-w-5xl px-6 py-8">
+        {playlists.length > 0 ? (
+          <section className="mb-6 overflow-hidden rounded-[28px] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(18,18,20,0.92),rgba(6,6,8,0.96))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+            <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-400/90">
+                  Featured shelf
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold text-white">
+                  Your library feels stronger when every playlist reads like a cover.
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-300">
+                  Rename, expand, and build mixes that feel intentional. The UI now leans more editorial than utilitarian.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {playlists.slice(0, 4).map((playlist) => (
+                  <div
+                    key={playlist._id ?? playlist.id}
+                    className={`h-28 rounded-[22px] bg-gradient-to-br ${playlist.gradient || "from-zinc-700 to-zinc-950"} shadow-lg`}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {error && (
           <p className="mb-4 rounded-lg border border-red-500 bg-red-900/40 p-3 text-sm text-red-200">
             {error}
@@ -328,8 +381,9 @@ function PlaylistsPage() {
               return (
                 <div
                   key={playlistId}
-                  className={`group relative rounded-2xl border border-white/10 bg-zinc-900/50 p-4 shadow-lg transition hover:border-white/20 hover:shadow-2xl ${p.gradient}`}
+                  className={`group relative overflow-hidden rounded-[26px] border border-white/10 bg-zinc-900/50 p-4 shadow-lg transition hover:border-white/20 hover:shadow-2xl ${p.gradient}`}
                 >
+                  <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/15" />
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0 flex-1">
                       {editingPlaylistId === playlistId ? (
@@ -352,7 +406,13 @@ function PlaylistsPage() {
                         </h2>
                       )}
                       <p className="text-xs text-zinc-400 line-clamp-1">{p.description || "No description"}</p>
-                      <p className="text-xs text-zinc-400">{(p.trackCount || 0)} song{(p.trackCount || 0) === 1 ? "" : "s"}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-zinc-400">
+                        <span>{(p.trackCount || 0)} song{(p.trackCount || 0) === 1 ? "" : "s"}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <IoTimeOutline />
+                          {ambientLabels[(playlistSongs.length + 1) % ambientLabels.length]}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -442,6 +502,9 @@ function PlaylistsPage() {
                       </div>
 
                       <div className="space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                          Add from library
+                        </p>
                         <select
                           className="w-full rounded-lg border border-white/20 bg-black/25 px-3 py-2 text-sm text-white"
                           value={selected}

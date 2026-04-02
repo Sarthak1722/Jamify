@@ -13,12 +13,14 @@ const messageSlice = createSlice({
     messages: [],
     hasMoreOlder: true,
     peerTyping: false,
+    groupTypingUsers: [],
   },
   reducers: {
     resetThread: (state) => {
       state.messages = [];
       state.hasMoreOlder = true;
       state.peerTyping = false;
+      state.groupTypingUsers = [];
     },
     setThreadPage: (state, action) => {
       const { messages, hasMore, prepend } = action.payload;
@@ -73,8 +75,37 @@ const messageSlice = createSlice({
         if (set.has(normalizeId(m._id))) m.readAt = readAt;
       });
     },
+    applyGroupMessagesRead: (state, action) => {
+      const { messageIds, userId, readAt } = action.payload;
+      const ids = new Set((messageIds || []).map((id) => normalizeId(id)));
+      const normalizedUserId = normalizeId(userId);
+      state.messages.forEach((message) => {
+        if (!ids.has(normalizeId(message._id))) return;
+        const current = Array.isArray(message.readBy) ? message.readBy : [];
+        const filtered = current.filter((entry) => normalizeId(entry.userId) !== normalizedUserId);
+        filtered.push({ userId: normalizedUserId, readAt });
+        message.readBy = filtered;
+      });
+    },
     setPeerTyping: (state, action) => {
       state.peerTyping = Boolean(action.payload);
+    },
+    setGroupTypingState: (state, action) => {
+      const { roomId, userId, userName, typing } = action.payload || {};
+      if (!roomId || !userId) return;
+
+      const normalizedUserId = normalizeId(userId);
+      state.groupTypingUsers = state.groupTypingUsers.filter(
+        (entry) => normalizeId(entry.userId) !== normalizedUserId,
+      );
+
+      if (typing) {
+        state.groupTypingUsers.push({
+          roomId: normalizeId(roomId),
+          userId: normalizedUserId,
+          userName: userName || "Someone",
+        });
+      }
     },
   },
 });
@@ -86,7 +117,9 @@ export const {
   receiveSocketMessage,
   removeOptimisticMessage,
   applyMessagesRead,
+  applyGroupMessagesRead,
   setPeerTyping,
+  setGroupTypingState,
 } = messageSlice.actions;
 
 export default messageSlice.reducer;

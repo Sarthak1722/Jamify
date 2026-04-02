@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
 import { Conversation } from "../models/conversationModel.js";
 import { Message } from "../models/messageModel.js";
+import { GroupRoom } from "../models/groupRoomModel.js";
 import {
   emitNewMessageToParticipants,
+  emitNewGroupMessageToRoom,
   getSocketIdForUser,
 } from "../socket/socket.js";
 
@@ -18,6 +20,17 @@ function participantThreadFilter(senderID, receiverID) {
       { senderID: b, receiverID: a },
     ],
   };
+}
+
+async function findAuthorizedRoom(roomId, userId) {
+  if (!mongoose.Types.ObjectId.isValid(String(roomId))) {
+    return null;
+  }
+
+  return GroupRoom.findOne({
+    _id: roomId,
+    members: userId,
+  }).select("_id name members").lean();
 }
 
 export const sendMessage = async (req, res) => {
@@ -107,5 +120,147 @@ export const getMessage = async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Failed to load messages" });
+  }
+};
+
+export const sendGroupMessage = async (req, res) => {
+  try {
+    const senderID = new mongoose.Types.ObjectId(String(req.id));
+    const room = await findAuthorizedRoom(req.params.roomId, req.id);
+    const { message, clientMessageId } = req.body;
+
+    if (!room) {
+      return res.status(404).json({ message: "Group chat not found" });
+    }
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    const now = new Date();
+    const deliveredTo = room.members
+      .map((memberId) => String(memberId))
+      .filter((memberId) => memberId !== String(req.id) && getSocketIdForUser(memberId))
+      .map((memberId) => ({
+        userId: new mongoose.Types.ObjectId(memberId),
+        deliveredAt: now,
+      }));
+
+    const newMessage = await Message.create({
+      senderID,
+      roomID: room._id,
+      message: String(message).trim(),
+      deliveredTo,
+      clientMessageId:
+        clientMessageId && String(clientMessageId).trim()
+          ? String(clientMessageId).trim()
+          : undefined,
+    });
+
+    await GroupRoom.updateOne({ _id: room._id }, { $set: { updatedAt: new Date() } });
+
+    const populated = await Message.findById(newMessage._id)
+      .populate("senderID", "fullName userName profilePhoto")
+      .lean();
+
+    emitNewGroupMessageToRoom(String(room._id), room.members, populated);
+
+    return res.status(201).json({
+      message: "group message sent",
+      contents: populated,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Failed to send group message" });
+  }
+};
+
+export const getGroupMessages = async (req, res) => {
+  try {
+    const room = await findAuthorizedRoom(req.params.roomId, req.id);
+    if (!room) {
+      return res.status(404).json({ message: "Group chat not found" });
+    }
+
+    const before = req.query.before;
+    const limit = Math.min(
+      Math.max(parseInt(String(req.query.limit || DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 1),
+      MAX_LIMIT,
+    );
+
+    const filter = {
+      roomID: new mongoose.Types.ObjectId(String(room._id)),
+    };
+
+    if (before && mongoose.Types.ObjectId.isValid(String(before))) {
+      const cursor = await Message.findOne({
+        _id: before,
+        roomID: room._id,
+      }).lean();
+      if (cursor) {
+        filter.createdAt = { $lt: cursor.createdAt };
+      }
+    }
+
+    const batch = await Message.find(filter)
+      .populate("senderID", "fullName userName profilePhoto")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const chronological = batch.reverse();
+    const hasMore = batch.length === limit;
+
+    return res.status(200).json({
+      messages: chronological,
+      hasMore,
+      room,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Failed to load group messages" });
+  }
+};
+
+export const markGroupRead = async (req, res) => {
+  try {
+    const room = await findAuthorizedRoom(req.params.roomId, req.id);
+    if (!room) {
+      return res.status(404).json({ message: "Group chat not found" });
+    }
+
+    const readerId = String(req.id);
+    const now = new Date();
+    const unreadMessages = await Message.find({
+      roomID: room._id,
+      senderID: { $ne: new mongoose.Types.ObjectId(readerId) },
+      "readBy.userId": { $ne: new mongoose.Types.ObjectId(readerId) },
+    }).select("_id");
+
+    if (!unreadMessages.length) {
+      return res.status(200).json({ messageIds: [], userId: readerId, readAt: now.toISOString() });
+    }
+
+    const ids = unreadMessages.map((doc) => doc._id);
+    await Message.updateMany(
+      { _id: { $in: ids } },
+      {
+        $push: {
+          readBy: {
+            userId: new mongoose.Types.ObjectId(readerId),
+            readAt: now,
+          },
+        },
+      },
+    );
+
+    return res.status(200).json({
+      messageIds: ids.map((id) => String(id)),
+      userId: readerId,
+      readAt: now.toISOString(),
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Failed to mark group messages as read" });
   }
 };

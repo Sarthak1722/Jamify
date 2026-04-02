@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { IoSend } from "react-icons/io5";
 import { useSelector, useDispatch } from "react-redux";
 import toast from "react-hot-toast";
-import { sendChatMessage } from "../api/messagesApi.js";
+import { sendChatMessage, sendGroupChatMessage } from "../api/messagesApi.js";
 import { addOptimisticMessage, removeOptimisticMessage } from "../redux/messageSlice.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { normalizeUserId } from "../utils/messageConversation.js";
@@ -17,12 +17,22 @@ const SendInput = () => {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { selectedUser, authUser } = useSelector((store) => store.user);
+  const selectedRoomChat = useSelector((store) => store.rooms.selectedRoomChat);
   const dispatch = useDispatch();
   const { socket } = useSocket();
   const typingTimer = useRef(null);
+  const isGroupThread = Boolean(selectedRoomChat?._id);
 
   const flushStopTyping = () => {
-    if (!socket || !selectedUser?._id) return;
+    if (!socket) return;
+    if (isGroupThread && selectedRoomChat?._id) {
+      socket.emit("stopGroupTyping", {
+        roomId: String(selectedRoomChat._id),
+        userName: authUser?.fullName || "Someone",
+      });
+      return;
+    }
+    if (!selectedUser?._id) return;
     socket.emit("stopTyping", { toUserId: String(selectedUser._id) });
   };
 
@@ -33,9 +43,24 @@ const SendInput = () => {
     };
   }, []);
 
+  useEffect(() => {
+    setMessage("");
+  }, [selectedUser?._id, selectedRoomChat?._id]);
+
+  const selectedFirstName = selectedUser?.fullName?.trim()?.split(/\s+/)?.[0];
+
   const bumpTyping = () => {
-    if (!socket?.connected || !selectedUser?._id) return;
-    socket.emit("typing", { toUserId: String(selectedUser._id) });
+    if (!socket?.connected) return;
+    if (isGroupThread && selectedRoomChat?._id) {
+      socket.emit("groupTyping", {
+        roomId: String(selectedRoomChat._id),
+        userName: authUser?.fullName || "Someone",
+      });
+    } else if (selectedUser?._id) {
+      socket.emit("typing", { toUserId: String(selectedUser._id) });
+    } else {
+      return;
+    }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
       flushStopTyping();
@@ -45,7 +70,9 @@ const SendInput = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-    if (!message.trim() || !selectedUser?._id || !authUser?._id || sending) return;
+    if (!message.trim() || !authUser?._id || sending) return;
+    if (!isGroupThread && !selectedUser?._id) return;
+    if (isGroupThread && !selectedRoomChat?._id) return;
 
     const text = message.trim();
     const clientMessageId = newClientMessageId();
@@ -55,7 +82,8 @@ const SendInput = () => {
       _id: `temp:${clientMessageId}`,
       clientMessageId,
       senderID: normalizeUserId(authUser._id),
-      receiverID: normalizeUserId(selectedUser._id),
+      receiverID: isGroupThread ? null : normalizeUserId(selectedUser._id),
+      roomID: isGroupThread ? String(selectedRoomChat._id) : null,
       message: text,
       createdAt: new Date().toISOString(),
       _optimistic: true,
@@ -68,7 +96,11 @@ const SendInput = () => {
     setSending(true);
 
     try {
-      await sendChatMessage(selectedUser._id, text, clientMessageId);
+      if (isGroupThread) {
+        await sendGroupChatMessage(selectedRoomChat._id, text, clientMessageId);
+      } else {
+        await sendChatMessage(selectedUser._id, text, clientMessageId);
+      }
     } catch (error) {
       console.error("sendChatMessage failed", error);
       dispatch(removeOptimisticMessage(clientMessageId));
@@ -90,7 +122,13 @@ const SendInput = () => {
       "
     >
       <input
-        placeholder="Type a message..."
+        placeholder={
+          isGroupThread
+            ? `Message ${selectedRoomChat?.name || "group"}...`
+            : selectedFirstName
+              ? `Message ${selectedFirstName}...`
+              : "Type a message..."
+        }
         className="
         w-full
         px-4
@@ -118,26 +156,29 @@ const SendInput = () => {
         disabled={sending}
       />
 
-      <button
-        type="submit"
-        disabled={sending}
-        className="
-        px-5
-        py-2
-        rounded-xl
-        bg-linear-to-r
-        from-indigo-500
-        to-violet-500
-        text-white
-        hover:scale-105
-        transition
-        shadow-lg
-        cursor-pointer
-        disabled:opacity-50 disabled:hover:scale-100
-        "
-      >
-        <IoSend />
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="submit"
+          disabled={sending}
+          className="
+          px-5
+          py-2
+          rounded-xl
+          bg-linear-to-r
+          from-indigo-500
+          to-violet-500
+          text-white
+          hover:scale-105
+          transition
+          shadow-lg
+          cursor-pointer
+          disabled:opacity-50 disabled:hover:scale-100
+          "
+        >
+          <IoSend />
+        </button>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-600"></span>
+      </div>
     </form>
   );
 };

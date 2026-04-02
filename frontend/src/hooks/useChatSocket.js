@@ -4,7 +4,9 @@ import { useSocket } from "../context/SocketContext.jsx";
 import {
   receiveSocketMessage,
   applyMessagesRead,
+  applyGroupMessagesRead,
   setPeerTyping,
+  setGroupTypingState,
 } from "../redux/messageSlice.js";
 import { setonlineUsers, setotherUsers } from "../redux/userSlice.js";
 import { isMessageInConversation } from "../utils/messageConversation.js";
@@ -17,11 +19,14 @@ export function useChatSocket() {
   const dispatch = useDispatch();
   const authUser = useSelector((s) => s.user.authUser);
   const selectedUser = useSelector((s) => s.user.selectedUser);
+  const selectedRoomChat = useSelector((s) => s.rooms.selectedRoomChat);
 
   const authIdRef = useRef(null);
   const peerIdRef = useRef(null);
+  const roomIdRef = useRef(null);
   authIdRef.current = authUser?._id ?? null;
   peerIdRef.current = selectedUser?._id ?? null;
+  roomIdRef.current = selectedRoomChat?._id ?? null;
 
   useEffect(() => {
     if (!socket) return;
@@ -52,19 +57,58 @@ export function useChatSocket() {
       dispatch(setPeerTyping(Boolean(typing)));
     };
 
+    const onGroupMessagesRead = ({ roomId, messageIds, userId, readAt }) => {
+      const activeRoomId = roomIdRef.current;
+      if (!activeRoomId || String(activeRoomId) !== String(roomId)) return;
+      dispatch(applyGroupMessagesRead({ messageIds, userId, readAt }));
+    };
+
+    const onGroupMessage = (msg) => {
+      const roomId = roomIdRef.current;
+      if (!roomId || String(msg.roomID) !== String(roomId)) return;
+      dispatch(receiveSocketMessage(msg));
+    };
+
+    const onGroupTyping = ({ roomId, fromUserId, userName, typing }) => {
+      const activeRoomId = roomIdRef.current;
+      if (!activeRoomId || String(activeRoomId) !== String(roomId)) return;
+      dispatch(setGroupTypingState({ roomId, userId: fromUserId, userName, typing }));
+    };
+
     socket.on("newMessage", onNewMessage);
+    socket.on("groupMessage", onGroupMessage);
     socket.on("getOnlineUsers", onOnlineUsers);
     socket.on("otherUsers", onOtherUsers);
     socket.on("messagesRead", onMessagesRead);
     socket.on("peerTyping", onPeerTyping);
+    socket.on("groupTyping", onGroupTyping);
+    socket.on("groupMessagesRead", onGroupMessagesRead);
     socket.emit("presenceSync");
 
     return () => {
       socket.off("newMessage", onNewMessage);
+      socket.off("groupMessage", onGroupMessage);
       socket.off("getOnlineUsers", onOnlineUsers);
       socket.off("otherUsers", onOtherUsers);
       socket.off("messagesRead", onMessagesRead);
       socket.off("peerTyping", onPeerTyping);
+      socket.off("groupTyping", onGroupTyping);
+      socket.off("groupMessagesRead", onGroupMessagesRead);
     };
   }, [socket, dispatch]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const roomId = selectedRoomChat?._id;
+
+    if (!roomId) {
+      socket.emit("groupChatLeave");
+      return;
+    }
+
+    socket.emit("groupChatJoin", { roomId: String(roomId) });
+    return () => {
+      socket.emit("groupChatLeave", { roomId: String(roomId) });
+    };
+  }, [socket, selectedRoomChat?._id]);
 }

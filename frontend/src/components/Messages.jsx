@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 const Messages = () => {
   const { loadingInitial, loadingOlder, loadOlder, hasMoreOlder } = useGetMessages();
   const messages = useSelector((store) => store.messages.messages);
+  const selectedRoomChat = useSelector((store) => store.rooms.selectedRoomChat);
   const bottomRef = useRef(null);
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -58,6 +59,16 @@ const Messages = () => {
       ) : null}
       {loadingInitial ? (
         <p className="text-center text-sm text-zinc-400">Loading messages…</p>
+      ) : null}
+      {!loadingInitial && messages.length === 0 ? (
+        <div className="mx-auto my-auto max-w-sm rounded-3xl border border-white/[0.08] bg-white/[0.03] px-6 py-8 text-center">
+          <p className="text-sm font-semibold text-white">No messages yet</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            {selectedRoomChat
+              ? "Start the group with a quick hello or drop a track for everyone."
+              : "Start the conversation with something small. A song recommendation works well."}
+          </p>
+        </div>
       ) : null}
       {messages?.map((m) => (
         <Message key={m.clientMessageId || m._id} message={m} />

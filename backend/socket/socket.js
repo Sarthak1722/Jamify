@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { Server } from "socket.io";
 import { Message } from "../models/messageModel.js";
 import { User } from "../models/userModel.js";
+import { GroupRoom } from "../models/groupRoomModel.js";
 import {
   attachPlaybackSocketHandlers,
   detachPlaybackOnDisconnect,
@@ -19,6 +20,20 @@ const userSocketMap = {};
 
 function mapOtherUsers(allUsers, currentUserId) {
   return allUsers.filter((user) => String(user._id) !== String(currentUserId));
+}
+
+function groupChatSocketRoom(roomId) {
+  return `chat:group:${roomId}`;
+}
+
+function isPlainPopulatedDoc(value) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      value._id != null &&
+      !("buffer" in value),
+  );
 }
 
 async function loadAllUsers() {
@@ -66,14 +81,36 @@ export function getSocketIdForUser(userId) {
  */
 function toMessagePayload(doc) {
   const o = doc && typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+  const senderRef = isPlainPopulatedDoc(o.senderID)
+    ? {
+        ...o.senderID,
+        _id: String(o.senderID._id),
+      }
+    : o.senderID != null
+      ? String(o.senderID)
+      : o.senderID;
+
   return {
     ...o,
     _id: o._id != null ? String(o._id) : o._id,
-    senderID: o.senderID != null ? String(o.senderID) : o.senderID,
+    senderID: senderRef,
     receiverID: o.receiverID != null ? String(o.receiverID) : o.receiverID,
+    roomID: o.roomID != null ? String(o.roomID) : o.roomID,
     clientMessageId: o.clientMessageId || undefined,
     deliveredAt: o.deliveredAt ? new Date(o.deliveredAt).toISOString() : null,
     readAt: o.readAt ? new Date(o.readAt).toISOString() : null,
+    deliveredTo: Array.isArray(o.deliveredTo)
+      ? o.deliveredTo.map((entry) => ({
+          userId: entry?.userId != null ? String(entry.userId) : "",
+          deliveredAt: entry?.deliveredAt ? new Date(entry.deliveredAt).toISOString() : null,
+        }))
+      : [],
+    readBy: Array.isArray(o.readBy)
+      ? o.readBy.map((entry) => ({
+          userId: entry?.userId != null ? String(entry.userId) : "",
+          readAt: entry?.readAt ? new Date(entry.readAt).toISOString() : null,
+        }))
+      : [],
   };
 }
 
@@ -91,6 +128,32 @@ export function emitNewMessageToParticipants(senderId, receiverId, messageDoc) {
   if (receiverSocketId) {
     io.to(receiverSocketId).emit("newMessage", payload);
   }
+}
+
+export function emitNewGroupMessageToRoom(roomId, memberIds = [], messageDoc) {
+  const payload = toMessagePayload(messageDoc);
+  io.to(groupChatSocketRoom(roomId)).emit("groupMessage", payload);
+  memberIds.forEach((memberId) => {
+    const socketId = getSocketIdForUser(memberId);
+    if (socketId) {
+      io.to(socketId).emit("groupMessage", payload);
+    }
+  });
+}
+
+async function userHasGroupRoomAccess(userId, roomId) {
+  if (!userId || !roomId || !mongoose.Types.ObjectId.isValid(String(roomId))) {
+    return false;
+  }
+
+  const room = await GroupRoom.findOne({
+    _id: roomId,
+    members: userId,
+  })
+    .select("_id members")
+    .lean();
+
+  return Boolean(room);
 }
 
 io.on("connection", (socket) => {
@@ -131,6 +194,53 @@ io.on("connection", (socket) => {
     if (sid) io.to(sid).emit("peerTyping", { fromUserId: userId, typing: false });
   });
 
+  socket.on("groupChatJoin", async ({ roomId }) => {
+    if (!userId || !roomId) return;
+    if (!(await userHasGroupRoomAccess(userId, roomId))) return;
+
+    const previousRoom = socket.data?.groupChatRoom;
+    if (previousRoom) {
+      socket.leave(previousRoom);
+    }
+
+    const nextRoom = groupChatSocketRoom(roomId);
+    socket.join(nextRoom);
+    socket.data.groupChatRoom = nextRoom;
+    socket.data.groupChatRoomId = String(roomId);
+  });
+
+  socket.on("groupChatLeave", ({ roomId } = {}) => {
+    const joinedRoom = socket.data?.groupChatRoom;
+    const joinedRoomId = socket.data?.groupChatRoomId;
+    if (!joinedRoom) return;
+    if (roomId && String(roomId) !== String(joinedRoomId)) return;
+    socket.leave(joinedRoom);
+    socket.data.groupChatRoom = null;
+    socket.data.groupChatRoomId = null;
+  });
+
+  socket.on("groupTyping", async ({ roomId, userName }) => {
+    if (!userId || !roomId) return;
+    if (!(await userHasGroupRoomAccess(userId, roomId))) return;
+    socket.to(groupChatSocketRoom(roomId)).emit("groupTyping", {
+      roomId: String(roomId),
+      fromUserId: String(userId),
+      userName: userName || null,
+      typing: true,
+    });
+  });
+
+  socket.on("stopGroupTyping", async ({ roomId, userName }) => {
+    if (!userId || !roomId) return;
+    if (!(await userHasGroupRoomAccess(userId, roomId))) return;
+    socket.to(groupChatSocketRoom(roomId)).emit("groupTyping", {
+      roomId: String(roomId),
+      fromUserId: String(userId),
+      userName: userName || null,
+      typing: false,
+    });
+  });
+
   socket.on("markRead", async ({ withUserId }) => {
     try {
       if (!userId || !withUserId) return;
@@ -154,6 +264,21 @@ io.on("connection", (socket) => {
       }
     } catch (e) {
       console.error("markRead", e);
+    }
+  });
+
+  socket.on("groupMessagesRead", async ({ roomId, messageIds, userId: readerId, readAt }) => {
+    try {
+      if (!userId || !roomId || !Array.isArray(messageIds) || !messageIds.length) return;
+      if (!(await userHasGroupRoomAccess(userId, roomId))) return;
+      io.to(groupChatSocketRoom(roomId)).emit("groupMessagesRead", {
+        roomId: String(roomId),
+        messageIds: messageIds.map((id) => String(id)),
+        userId: String(readerId || userId),
+        readAt,
+      });
+    } catch (error) {
+      console.error("groupMessagesRead", error);
     }
   });
 

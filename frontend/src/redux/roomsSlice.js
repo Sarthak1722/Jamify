@@ -7,6 +7,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   list: [],
   activeJam: null,
+  selectedRoomChat: null,
 };
 
 const roomsSlice = createSlice({
@@ -22,10 +23,23 @@ const roomsSlice = createSlice({
     clearActiveJam: (state) => {
       state.activeJam = null;
     },
+    setSelectedRoomChat: (state, action) => {
+      state.selectedRoomChat = action.payload;
+    },
+    clearSelectedRoomChat: (state) => {
+      state.selectedRoomChat = null;
+    },
     resetRooms: () => ({ ...initialState }),
   },
 });
 
-export const { setRoomsList, setActiveJam, clearActiveJam, resetRooms } = roomsSlice.actions;
+export const {
+  setRoomsList,
+  setActiveJam,
+  clearActiveJam,
+  setSelectedRoomChat,
+  clearSelectedRoomChat,
+  resetRooms,
+} = roomsSlice.actions;
 
 export default roomsSlice.reducer;

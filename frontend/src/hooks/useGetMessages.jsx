@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { resetThread, setThreadPage } from "../redux/messageSlice.js";
-import { fetchMessagesPage } from "../api/messagesApi.js";
+import { fetchGroupMessagesPage, fetchMessagesPage } from "../api/messagesApi.js";
 
 /**
  * Initial page + load older for infinite scroll. Resets when peer changes.
@@ -9,25 +9,30 @@ import { fetchMessagesPage } from "../api/messagesApi.js";
 export function useGetMessages() {
   const dispatch = useDispatch();
   const peerId = useSelector((store) => store.user.selectedUser?._id);
+  const roomId = useSelector((store) => store.rooms.selectedRoomChat?._id);
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const hasMoreOlder = useSelector((s) => s.messages.hasMoreOlder);
   const messages = useSelector((s) => s.messages.messages);
 
   useEffect(() => {
-    if (peerId == null) {
+    const threadId = roomId ?? peerId;
+    const isGroup = Boolean(roomId);
+
+    if (threadId == null) {
       dispatch(resetThread());
       return;
     }
 
-    const id = String(peerId);
+    const id = String(threadId);
     dispatch(resetThread());
     let cancelled = false;
     setLoadingInitial(true);
 
     (async () => {
       try {
-        const { messages: page, hasMore } = await fetchMessagesPage(id);
+        const loader = isGroup ? fetchGroupMessagesPage : fetchMessagesPage;
+        const { messages: page, hasMore } = await loader(id);
         if (cancelled) return;
         dispatch(setThreadPage({ messages: page, hasMore, prepend: false }));
       } catch (e) {
@@ -40,16 +45,19 @@ export function useGetMessages() {
     return () => {
       cancelled = true;
     };
-  }, [peerId, dispatch]);
+  }, [peerId, roomId, dispatch]);
 
   const loadOlder = useCallback(async () => {
-    if (!peerId || loadingOlder || !hasMoreOlder || messages.length === 0) return;
+    const threadId = roomId ?? peerId;
+    const isGroup = Boolean(roomId);
+    if (!threadId || loadingOlder || !hasMoreOlder || messages.length === 0) return;
     const oldest = messages[0];
     if (!oldest?._id || String(oldest._id).startsWith("temp:")) return;
 
     setLoadingOlder(true);
     try {
-      const { messages: older, hasMore } = await fetchMessagesPage(String(peerId), {
+      const loader = isGroup ? fetchGroupMessagesPage : fetchMessagesPage;
+      const { messages: older, hasMore } = await loader(String(threadId), {
         before: oldest._id,
       });
       dispatch(setThreadPage({ messages: older, hasMore, prepend: true }));
@@ -58,7 +66,7 @@ export function useGetMessages() {
     } finally {
       setLoadingOlder(false);
     }
-  }, [peerId, loadingOlder, hasMoreOlder, messages, dispatch]);
+  }, [peerId, roomId, loadingOlder, hasMoreOlder, messages, dispatch]);
 
   return { loadingInitial, loadingOlder, loadOlder, hasMoreOlder };
 }

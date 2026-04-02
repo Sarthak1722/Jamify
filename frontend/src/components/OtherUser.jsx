@@ -2,44 +2,42 @@ import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setselectedUser } from "../redux/userSlice.js";
 import { isUserOnline, normalizeUserId } from "../utils/messageConversation.js";
+import { clearSelectedRoomChat } from "../redux/roomsSlice.js";
 
 const OtherUser = (prop) => {
   const dispatch = useDispatch();
   const selectedUserHandler = (user) => {
+    dispatch(clearSelectedRoomChat());
     dispatch(setselectedUser(user));
   };
   const { selectedUser, onlineUsers } = useSelector((store) => store.user);
   const isOnline = isUserOnline(onlineUsers, prop.user?._id);
   const isSelected = normalizeUserId(selectedUser?._id) === normalizeUserId(prop.user?._id);
   return (
-    <>
-        {/* user */}
-        <div
-          onClick={()=>selectedUserHandler(prop.user)}
+    <button
+      type="button"
+      onClick={() => selectedUserHandler(prop.user)}
+      className={`${isSelected ? "bg-white/18 ring-1 ring-white/12" : ""} flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${isSelected ? "hover:bg-white/18" : "hover:bg-white/[0.08]"}`}
+    >
+      <div className={`avatar ${isOnline ? "avatar-online" : ""}`}>
+        <img
+          src={prop.user?.profilePhoto}
+          className="h-10 w-10 rounded-full object-cover"
+          alt={prop.user?.fullName}
+        />
+      </div>
 
-          className=
-          {`${isSelected ? "bg-white/30" : ""} flex items-center gap-3
-          p-3
-          rounded-xl
-          ${isSelected ? "hover:bg-white/30" : "hover:bg-white/10"}
-          transition-all
-          cursor-pointer`}
-          
-        >
-          <div className={`avatar ${isOnline? 'avatar-online' : ''}`}>
-            <img
-            src={prop.user?.profilePhoto}
-            className="w-10 h-10 rounded-full"
-            />
-          </div>
-          
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-white">{prop.user?.fullName}</p>
+        <p className={`text-xs ${isOnline ? "text-green-400" : "text-zinc-400"}`}>
+          {isOnline ? "Online now" : "Last seen recently"}
+        </p>
+      </div>
 
-          <div>
-            <p className="text-sm text-white font-medium">{prop.user?.fullName}</p>
-            <p className={`text-xs ${isOnline? 'text-green-400' : 'text-gray-200'} `}>{ isOnline? 'Online' : 'Last Seen Recently' }</p>
-          </div>
-        </div>
-    </>
+      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+        {isSelected ? "open" : "dm"}
+      </span>
+    </button>
   );
 };
 
