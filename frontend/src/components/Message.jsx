@@ -107,7 +107,7 @@ const Message = ({ message }) => {
 
   return (
     <div className={`chat ${isSender ? "chat-end" : "chat-start"}`}>
-      <div className="chat-image avatar">
+      <div className="chat-image hidden avatar sm:block">
         <div className="w-10 rounded-full">
           <img
             src={senderPhoto}
@@ -116,25 +116,20 @@ const Message = ({ message }) => {
         </div>
       </div>
 
-      <div className="chat-header text-xs text-zinc-500">
+      <div className="chat-header px-1 text-xs text-zinc-500">
         {isGroupThread ? senderName : isSender ? authUser.fullName : selectedUser?.fullName}
         {timeLabel ? <time className="ml-2 text-[10px] uppercase tracking-[0.18em]">{timeLabel}</time> : null}
       </div>
 
       <div
-        className={`chat-bubble bg-linear-to-r
+        className={`chat-bubble border px-4 py-1.5 text-sm leading-6 shadow-[0_12px_30px_rgba(0,0,0,0.16)]
           ${
             isSender
-              ? "from-violet-500 to-indigo-500"
-              : "from-indigo-500 to-violet-500"
+              ? "border-emerald-400/20 bg-[#1d6f57] text-white"
+              : "border-white/8 bg-[#161616] text-zinc-100"
           }
-        text-white
-        px-4
-        py-2.5
         rounded-2xl
-        text-sm
-        max-w-[20rem]
-        leading-6
+        max-w-[18rem] sm:max-w-[20rem]
         backdrop-blur-md`}
       >
         {message.message}

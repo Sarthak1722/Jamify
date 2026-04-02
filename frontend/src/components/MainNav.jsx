@@ -20,6 +20,39 @@ import { resetPlayback } from "../redux/playbackSlice.js";
 import { resetRooms } from "../redux/roomsSlice.js";
 import apiClient from "../api/client.js";
 
+const navItems = [
+  {
+    to: "home",
+    label: "Home",
+    ActiveIcon: IoHome,
+    InactiveIcon: IoHomeOutline,
+  },
+  {
+    to: "messages",
+    label: "Messages",
+    ActiveIcon: IoChatbubbles,
+    InactiveIcon: IoChatbubblesOutline,
+  },
+  {
+    to: "rooms",
+    label: "Rooms",
+    ActiveIcon: IoPeople,
+    InactiveIcon: IoPeopleOutline,
+  },
+  {
+    to: "liked",
+    label: "Songs",
+    ActiveIcon: IoHeart,
+    InactiveIcon: IoHeartOutline,
+  },
+  {
+    to: "playlists",
+    label: "Playlists",
+    ActiveIcon: IoAlbums,
+    InactiveIcon: IoAlbumsOutline,
+  },
+];
+
 const navItemClass = ({ isActive }) =>
   [
     "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -32,7 +65,7 @@ const NavIcon = ({ active, ActiveIcon, InactiveIcon }) => (
   <span className="text-xl opacity-90">{active ? <ActiveIcon /> : <InactiveIcon />}</span>
 );
 
-const MainNav = () => {
+const MainNav = ({ variant = "desktop" }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { authUser } = useSelector((store) => store.user);
@@ -54,11 +87,38 @@ const MainNav = () => {
     }
   };
 
+  if (variant === "mobile") {
+    return (
+      <nav className="rounded-[26px] border border-white/10 bg-[#101010]/96 px-2 py-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="grid grid-cols-5 gap-1">
+          {navItems.map(({ to, label, ActiveIcon, InactiveIcon }) => (
+            <NavLink key={to} to={to} className="min-w-0">
+              {({ isActive }) => (
+                <span
+                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold tracking-[0.08em] transition ${
+                    isActive
+                      ? "bg-white text-black shadow-[0_8px_20px_rgba(255,255,255,0.14)]"
+                      : "text-zinc-400"
+                  }`}
+                >
+                  <span className="text-[1.2rem]">
+                    {isActive ? <ActiveIcon /> : <InactiveIcon />}
+                  </span>
+                  <span className="truncate">{label}</span>
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0c0c0c]/95 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-4 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1DB954] to-emerald-700 text-lg font-black text-black shadow-lg shadow-emerald-900/40">
-          J🎶
+          🎶
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight text-white">Jamify</p>
@@ -69,50 +129,16 @@ const MainNav = () => {
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-3">
-        <NavLink to="home" className={navItemClass}>
-          {({ isActive }) => (
-            <>
-              <NavIcon active={isActive} ActiveIcon={IoHome} InactiveIcon={IoHomeOutline} />
-              Home
-            </>
-          )}
-        </NavLink>
-        <NavLink to="messages" className={navItemClass}>
-          {({ isActive }) => (
-            <>
-              <NavIcon
-                active={isActive}
-                ActiveIcon={IoChatbubbles}
-                InactiveIcon={IoChatbubblesOutline}
-              />
-              Messages
-            </>
-          )}
-        </NavLink>
-        <NavLink to="rooms" className={navItemClass}>
-          {({ isActive }) => (
-            <>
-              <NavIcon active={isActive} ActiveIcon={IoPeople} InactiveIcon={IoPeopleOutline} />
-              Jam rooms
-            </>
-          )}
-        </NavLink>
-        <NavLink to="liked" className={navItemClass}>
-          {({ isActive }) => (
-            <>
-              <NavIcon active={isActive} ActiveIcon={IoHeart} InactiveIcon={IoHeartOutline} />
-              Songs
-            </>
-          )}
-        </NavLink>
-        <NavLink to="playlists" className={navItemClass}>
-          {({ isActive }) => (
-            <>
-              <NavIcon active={isActive} ActiveIcon={IoAlbums} InactiveIcon={IoAlbumsOutline} />
-              Playlists
-            </>
-          )}
-        </NavLink>
+        {navItems.map(({ to, label, ActiveIcon, InactiveIcon }) => (
+          <NavLink key={to} to={to} className={navItemClass}>
+            {({ isActive }) => (
+              <>
+                <NavIcon active={isActive} ActiveIcon={ActiveIcon} InactiveIcon={InactiveIcon} />
+                {label === "Rooms" ? "Jam rooms" : label}
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="mt-auto border-t border-white/[0.06] p-3">

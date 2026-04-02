@@ -38,11 +38,11 @@ const DiscoverPage = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#0a0a0a]/80 px-8 py-6 backdrop-blur-xl">
+      <header className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#0a0a0a]/80 px-4 py-5 backdrop-blur-xl sm:px-6 sm:py-6 lg:px-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-400/90">
           Home
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {firstName ? `${greeting}, ${firstName}` : "Hello"}. Ready for a quick Jam??
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
@@ -51,7 +51,7 @@ const DiscoverPage = () => {
         <p className="mt-2 text-xs uppercase tracking-[0.22em] text-zinc-500">{liveContext}</p>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl px-6 py-8">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <section className="mb-8 overflow-hidden rounded-[28px] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(16,25,22,0.96),rgba(8,8,10,0.92))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
           <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
             <div>
@@ -59,7 +59,7 @@ const DiscoverPage = () => {
                 <IoSparkles className="text-emerald-400" />
                 Today&apos;s aesthetic
               </div>
-              <h2 className="mt-4 max-w-lg text-4xl font-semibold leading-tight text-white">
+              <h2 className="mt-4 max-w-lg text-3xl font-semibold leading-tight text-white sm:text-4xl">
                 Late-night textures for quiet scrolling
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-300">

@@ -26,6 +26,22 @@ function groupChatSocketRoom(roomId) {
   return `chat:group:${roomId}`;
 }
 
+function toRoomPayload(room) {
+  if (!room) return null;
+  return {
+    ...room,
+    _id: room._id != null ? String(room._id) : room._id,
+    createdBy: room.createdBy != null ? String(room.createdBy) : room.createdBy,
+    admins: Array.isArray(room.admins) ? room.admins.map((id) => String(id)) : [],
+    members: Array.isArray(room.members)
+      ? room.members.map((member) => ({
+          ...member,
+          _id: member?._id != null ? String(member._id) : member?._id,
+        }))
+      : [],
+  };
+}
+
 function isPlainPopulatedDoc(value) {
   return Boolean(
     value &&
@@ -137,6 +153,27 @@ export function emitNewGroupMessageToRoom(roomId, memberIds = [], messageDoc) {
     const socketId = getSocketIdForUser(memberId);
     if (socketId) {
       io.to(socketId).emit("groupMessage", payload);
+    }
+  });
+}
+
+export function emitRoomUpsertToUsers(room, targetUserIds = []) {
+  const payload = toRoomPayload(room);
+  if (!payload) return;
+  targetUserIds.forEach((userId) => {
+    const socketId = getSocketIdForUser(userId);
+    if (socketId) {
+      io.to(socketId).emit("roomUpsert", payload);
+    }
+  });
+}
+
+export function emitRoomDeletedToUsers(roomId, targetUserIds = []) {
+  const payload = { roomId: String(roomId) };
+  targetUserIds.forEach((userId) => {
+    const socketId = getSocketIdForUser(userId);
+    if (socketId) {
+      io.to(socketId).emit("roomDeleted", payload);
     }
   });
 }

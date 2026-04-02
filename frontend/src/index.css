@@ -17,3 +17,11 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  padding-bottom: env(safe-area-inset-bottom);
+}

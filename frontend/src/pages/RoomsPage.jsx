@@ -83,8 +83,8 @@ const RoomsPage = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="border-b border-white/[0.06] px-6 py-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white">
+      <header className="border-b border-white/[0.06] px-4 py-5 sm:px-6 sm:py-6">
+        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
           <IoPeople className="text-emerald-400" />
           Jam rooms
         </h1>
@@ -94,7 +94,7 @@ const RoomsPage = () => {
         </p>
       </header>
 
-      <div className="mx-auto w-full max-w-3xl space-y-10 px-6 py-8">
+      <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
         <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-zinc-500">
             <IoAddCircleOutline />

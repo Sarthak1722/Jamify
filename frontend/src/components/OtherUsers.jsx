@@ -7,7 +7,7 @@ const OtherUsers = ({ users }) => {
 
   if(!otherUsers) return null;
   return (
-    <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1">
+    <div className="space-y-1 px-1 pb-3 sm:px-0">
         {users?.length ? users.map((user)=> {
             return (
                 <OtherUser key={user._id} user={user}/>

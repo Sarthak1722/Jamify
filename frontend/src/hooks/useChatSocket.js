@@ -9,6 +9,7 @@ import {
   setGroupTypingState,
 } from "../redux/messageSlice.js";
 import { setonlineUsers, setotherUsers } from "../redux/userSlice.js";
+import { removeRoom, upsertRoom } from "../redux/roomsSlice.js";
 import { isMessageInConversation } from "../utils/messageConversation.js";
 
 /**
@@ -47,6 +48,15 @@ export function useChatSocket() {
       dispatch(setotherUsers(Array.isArray(users) ? users : []));
     };
 
+    const onRoomUpsert = (room) => {
+      dispatch(upsertRoom(room));
+    };
+
+    const onRoomDeleted = ({ roomId }) => {
+      if (!roomId) return;
+      dispatch(removeRoom(roomId));
+    };
+
     const onMessagesRead = ({ messageIds, readAt }) => {
       dispatch(applyMessagesRead({ messageIds, readAt }));
     };
@@ -83,6 +93,8 @@ export function useChatSocket() {
     socket.on("peerTyping", onPeerTyping);
     socket.on("groupTyping", onGroupTyping);
     socket.on("groupMessagesRead", onGroupMessagesRead);
+    socket.on("roomUpsert", onRoomUpsert);
+    socket.on("roomDeleted", onRoomDeleted);
     socket.emit("presenceSync");
 
     return () => {
@@ -94,6 +106,8 @@ export function useChatSocket() {
       socket.off("peerTyping", onPeerTyping);
       socket.off("groupTyping", onGroupTyping);
       socket.off("groupMessagesRead", onGroupMessagesRead);
+      socket.off("roomUpsert", onRoomUpsert);
+      socket.off("roomDeleted", onRoomDeleted);
     };
   }, [socket, dispatch]);
 

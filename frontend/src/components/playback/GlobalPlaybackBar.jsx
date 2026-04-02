@@ -29,7 +29,7 @@ function jamSubtitle(activeJam, playbackRoomId) {
   return `Group jam · ${activeJam.label} · ${playbackRoomId || activeJam.roomId}`;
 }
 
-const GlobalPlaybackBar = () => {
+const GlobalPlaybackBar = ({ mobile = false }) => {
   const audioRef = useRef(null);
   const dispatch = useDispatch();
   const playback = useSelector((s) => s.playback);
@@ -94,14 +94,38 @@ const GlobalPlaybackBar = () => {
     commitSeeking,
   } = usePlaybackTimeline(playback, duration, emitSeek);
 
-  const handleTrackEnd = useCallback(() => {
+  const handlePrevTrack = () => {
+    if (hasActiveJam) {
+      emitPrevTrack();
+      return;
+    }
+    if (queue.length > 0 && playback.currentTrack) {
+      const currentIndex =
+        queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
+      const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+      const prevTrack = queue[prevIndex];
+      if (prevTrack) {
+        dispatch(setPlaybackQueueIndex(prevIndex));
+        emitChangeTrack(prevTrack.id, prevTrack);
+      }
+      return;
+    }
+    if (!catalog.length || !playback.currentTrack) return;
+    const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
+    if (currentIndex > 0) {
+      const prev = catalog[currentIndex - 1];
+      emitChangeTrack(prev.id, prev);
+    }
+  };
+
+  const handleNextTrack = useCallback(() => {
     if (hasActiveJam) {
       emitNextTrack();
       return;
     }
-
     if (queue.length > 0 && playback.currentTrack) {
-      const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
+      const currentIndex =
+        queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
       const nextIndex = (currentIndex + 1) % queue.length;
       const nextTrack = queue[nextIndex];
       if (nextTrack) {
@@ -110,18 +134,96 @@ const GlobalPlaybackBar = () => {
       }
       return;
     }
-
     if (!catalog.length || !playback.currentTrack) return;
     const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
     if (currentIndex >= 0) {
       const next = catalog[(currentIndex + 1) % catalog.length];
-      if (next) {
-        emitChangeTrack(next.id, next);
-      }
+      emitChangeTrack(next.id, next);
     }
   }, [hasActiveJam, emitNextTrack, queue, queueIndex, playback.currentTrack, catalog, dispatch, emitChangeTrack]);
 
+  const handleTrackEnd = useCallback(() => {
+    handleNextTrack();
+  }, [handleNextTrack]);
+
   if (!authUser?._id) return null;
+
+  if (mobile) {
+    return (
+      <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,21,22,0.98),rgba(15,15,16,0.96))] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <audio ref={audioRef} preload="auto" className="hidden" onEnded={handleTrackEnd} />
+
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-base font-bold text-white shadow-lg shadow-emerald-950/50">
+            ♪
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">
+              {playback.currentTrack?.title || "Pick a track"}
+            </p>
+            <p className="truncate text-xs text-zinc-400">
+              {playback.currentTrack?.artist || "Your global player stays with every screen"}
+            </p>
+            <p className="truncate pt-0.5 text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+              {activeJam ? jamSubtitle(activeJam, playback.roomId) : "Solo playback"}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={handlePrevTrack}
+              className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Previous track"
+            >
+              <IoPlaySkipBack className="text-base" />
+            </button>
+            <button
+              type="button"
+              disabled={!playback.currentTrack}
+              onClick={() => (playback.isPlaying ? emitPause() : emitPlay())}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:opacity-30"
+              aria-label={playback.isPlaying ? "Pause" : "Play"}
+            >
+              {playback.isPlaying ? (
+                <IoPause className="text-lg" />
+              ) : (
+                <IoPlay className="pl-0.5 text-lg" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleNextTrack}
+              className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Next track"
+            >
+              <IoPlaySkipForward className="text-base" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-2.5 flex items-center gap-2 text-[10px] text-zinc-500 tabular-nums">
+          <span>{formatTime(displayTime)}</span>
+          <input
+            type="range"
+            min={0}
+            max={maxDur}
+            step={0.25}
+            disabled={!playback.currentTrack}
+            value={Math.min(displayTime, maxDur)}
+            onPointerDown={beginSeeking}
+            onFocus={beginSeeking}
+            onChange={(e) => updateSeeking(e.target.value)}
+            onPointerUp={(e) => commitSeeking(e.target.value)}
+            onKeyUp={(e) => commitSeeking(e.target.value)}
+            onBlur={(e) => commitSeeking(e.target.value)}
+            className="h-1 flex-1 accent-emerald-500 disabled:opacity-30"
+          />
+          <span>{formatTime(resolvedDuration)}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="shrink-0 border-t border-white/[0.08] bg-[#121212]/98 px-4 py-3 backdrop-blur-xl">
@@ -149,28 +251,7 @@ const GlobalPlaybackBar = () => {
           <div className="flex items-center justify-center gap-4">
             <button
               type="button"
-              onClick={() => {
-                if (hasActiveJam) {
-                  emitPrevTrack();
-                  return;
-                }
-                if (queue.length > 0 && playback.currentTrack) {
-                  const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
-                  const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-                  const prevTrack = queue[prevIndex];
-                  if (prevTrack) {
-                    dispatch(setPlaybackQueueIndex(prevIndex));
-                    emitChangeTrack(prevTrack.id, prevTrack);
-                  }
-                  return;
-                }
-                if (!catalog.length || !playback.currentTrack) return;
-                const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
-                if (currentIndex > 0) {
-                  const prev = catalog[currentIndex - 1];
-                  emitChangeTrack(prev.id, prev);
-                }
-              }}
+              onClick={handlePrevTrack}
               className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
               aria-label="Previous track"
             >
@@ -191,28 +272,7 @@ const GlobalPlaybackBar = () => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (hasActiveJam) {
-                  emitNextTrack();
-                  return;
-                }
-                if (queue.length > 0 && playback.currentTrack) {
-                  const currentIndex = queueIndex >= 0 ? queueIndex : queue.findIndex((t) => t.id === playback.currentTrack?.id);
-                  const nextIndex = (currentIndex + 1) % queue.length;
-                  const nextTrack = queue[nextIndex];
-                  if (nextTrack) {
-                    dispatch(setPlaybackQueueIndex(nextIndex));
-                    emitChangeTrack(nextTrack.id, nextTrack);
-                  }
-                  return;
-                }
-                if (!catalog.length || !playback.currentTrack) return;
-                const currentIndex = catalog.findIndex((t) => t.id === playback.currentTrack?.id);
-                if (currentIndex >= 0) {
-                  const next = catalog[(currentIndex + 1) % catalog.length];
-                  emitChangeTrack(next.id, next);
-                }
-              }}
+              onClick={handleNextTrack}
               className="rounded-full p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
               aria-label="Next track"
             >

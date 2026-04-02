@@ -80,12 +80,19 @@ const ChatSidebar = () => {
   };
 
   return (
-    <div className="flex w-[300px] shrink-0 flex-col border-r border-white/[0.08] bg-black/25 backdrop-blur-xl">
-      <div className="border-b border-white/[0.08] px-4 py-4">
+    <div className="relative flex min-h-0 w-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,rgba(9,9,10,0.95),rgba(7,7,8,0.92))] backdrop-blur-xl lg:w-[320px]">
+      <div className="border-b border-white/[0.08] px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Inbox</h2>
-            <p className="mt-1 text-sm font-medium text-zinc-200">Direct messages & groups</p>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
+              Inbox
+            </h2>
+            <p className="mt-1 text-base font-semibold text-zinc-100 sm:text-sm">
+              Direct messages & groups
+            </p>
+            <p className="mt-1 text-xs text-zinc-500 lg:hidden">
+              Jump between chats while your jam keeps playing.
+            </p>
           </div>
           <button
             type="button"
@@ -102,7 +109,7 @@ const ChatSidebar = () => {
         </div>
       </div>
 
-      <div className="space-y-3 p-3">
+      <div className="space-y-3 p-3 sm:p-4">
         <input
           type="text"
           placeholder="Search people or groups..."
@@ -111,50 +118,52 @@ const ChatSidebar = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="px-3 pb-3">
-        <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          <IoPeople />
-          Groups
+      <div className="flex-1 overflow-y-auto px-3 pb-4 sm:px-4">
+        <div className="pb-3">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <IoPeople />
+            Groups
+          </div>
+          <div className="space-y-2">
+            {filteredRooms.length ? (
+              filteredRooms.map((room) => {
+                const isSelected = String(selectedRoomChat?._id) === String(room._id);
+                return (
+                  <button
+                    key={room._id}
+                    type="button"
+                    onClick={() => selectRoom(room)}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+                      isSelected ? "bg-white/18 ring-1 ring-white/12" : "bg-white/[0.03] hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/35 to-cyan-500/20 text-emerald-200">
+                      <IoChatbubbles />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{room.name}</p>
+                      <p className="text-xs text-zinc-400">
+                        {(room.members || []).length} members
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-zinc-500">
+                No groups yet
+              </div>
+            )}
+          </div>
         </div>
-        <div className="space-y-2">
-          {filteredRooms.length ? (
-            filteredRooms.map((room) => {
-              const isSelected = String(selectedRoomChat?._id) === String(room._id);
-              return (
-                <button
-                  key={room._id}
-                  type="button"
-                  onClick={() => selectRoom(room)}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
-                    isSelected ? "bg-white/18 ring-1 ring-white/12" : "bg-white/[0.03] hover:bg-white/[0.08]"
-                  }`}
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/35 to-cyan-500/20 text-emerald-200">
-                    <IoChatbubbles />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{room.name}</p>
-                    <p className="text-xs text-zinc-400">
-                      {(room.members || []).length} members
-                    </p>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-zinc-500">
-              No groups yet
-            </div>
-          )}
+        <div className="pb-2">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <IoChatbubbles />
+            Direct messages
+          </div>
         </div>
+        <OtherUsers users={search ? filteredUsers : otherUsers} />
       </div>
-      <div className="px-3 pb-2">
-        <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          <IoChatbubbles />
-          Direct messages
-        </div>
-      </div>
-      <OtherUsers users={search ? filteredUsers : otherUsers} />
 
       {showCreateGroup ? (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">

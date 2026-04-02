@@ -3,23 +3,37 @@ import SendInput from "./SendInput.jsx";
 import Messages from "./Messages.jsx";
 import { useSelector, useDispatch } from "react-redux";
 import toast from "react-hot-toast";
-import { IoChatbubblesOutline, IoEllipsisHorizontal, IoMusicalNotes, IoPeople } from "react-icons/io5";
+import {
+  IoArrowBack,
+  IoChatbubblesOutline,
+  IoEllipsisHorizontal,
+  IoMusicalNotes,
+  IoPeople,
+} from "react-icons/io5";
 import { isUserOnline, normalizeUserId } from "../utils/messageConversation.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import {
   setActiveJam,
   clearActiveJam,
   clearSelectedRoomChat,
-  setRoomsList,
+  removeRoom,
   setSelectedRoomChat,
+  upsertRoom,
 } from "../redux/roomsSlice.js";
+import { setselectedUser } from "../redux/userSlice.js";
 import { markGroupMessagesRead } from "../api/messagesApi.js";
-import { deleteRoom as deleteRoomApi, updateRoom as updateRoomApi } from "../api/roomsApi.js";
+import {
+  addRoomMembers as addRoomMembersApi,
+  deleteRoom as deleteRoomApi,
+  leaveRoom as leaveRoomApi,
+  updateRoom as updateRoomApi,
+  updateRoomAdmin as updateRoomAdminApi,
+} from "../api/roomsApi.js";
 
 const MessageContainer = () => {
   const dispatch = useDispatch();
-  const { authUser, selectedUser, onlineUsers } = useSelector((store) => store.user);
-  const { activeJam, selectedRoomChat, list: rooms } = useSelector((store) => store.rooms);
+  const { authUser, selectedUser, onlineUsers, otherUsers } = useSelector((store) => store.user);
+  const { activeJam, selectedRoomChat } = useSelector((store) => store.rooms);
   const messages = useSelector((store) => store.messages.messages);
   const peerTyping = useSelector((store) => store.messages.peerTyping);
   const groupTypingUsers = useSelector((store) => store.messages.groupTypingUsers);
@@ -30,11 +44,22 @@ const MessageContainer = () => {
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showRenameGroup, setShowRenameGroup] = useState(false);
   const [showGroupMembers, setShowGroupMembers] = useState(false);
+  const [showAddMembers, setShowAddMembers] = useState(false);
   const [groupNameDraft, setGroupNameDraft] = useState("");
+  const [pickedMembers, setPickedMembers] = useState(() => new Set());
   const [savingGroup, setSavingGroup] = useState(false);
   const groupMenuRef = useRef(null);
   const isGroupCreator =
     isGroupThread && String(selectedRoomChat?.createdBy) === String(authUser?._id);
+  const isGroupAdmin =
+    isGroupThread &&
+    (isGroupCreator ||
+      (selectedRoomChat?.admins || []).some((adminId) => String(adminId) === String(authUser?._id)));
+  const selectableMembers = useMemo(() => {
+    if (!selectedRoomChat?._id) return [];
+    const currentMemberIds = new Set((selectedRoomChat.members || []).map((member) => String(member._id)));
+    return (otherUsers || []).filter((user) => !currentMemberIds.has(String(user._id)));
+  }, [otherUsers, selectedRoomChat]);
 
   const jamWithThisDm =
     activeJam?.kind === "dm" &&
@@ -112,10 +137,12 @@ const MessageContainer = () => {
     setGroupNameDraft(selectedRoomChat?.name || "");
   }, [selectedRoomChat?.name]);
 
+  useEffect(() => {
+    setPickedMembers(new Set());
+  }, [selectedRoomChat?._id]);
+
   const syncUpdatedRoom = (room) => {
-    dispatch(
-      setRoomsList((rooms || []).map((entry) => (String(entry._id) === String(room._id) ? room : entry))),
-    );
+    dispatch(upsertRoom(room));
     dispatch(setSelectedRoomChat(room));
     if (activeJam?.kind === "group" && String(activeJam.groupId) === String(room._id)) {
       dispatch(
@@ -127,6 +154,16 @@ const MessageContainer = () => {
         }),
       );
     }
+  };
+
+  const togglePickedMember = (memberId) => {
+    setPickedMembers((prev) => {
+      const next = new Set(prev);
+      const normalized = String(memberId);
+      if (next.has(normalized)) next.delete(normalized);
+      else next.add(normalized);
+      return next;
+    });
   };
 
   const handleRenameGroup = async (e) => {
@@ -154,9 +191,7 @@ const MessageContainer = () => {
     setSavingGroup(true);
     try {
       await deleteRoomApi(selectedRoomChat._id);
-      dispatch(
-        setRoomsList((rooms || []).filter((room) => String(room._id) !== String(selectedRoomChat._id))),
-      );
+      dispatch(removeRoom(selectedRoomChat._id));
       dispatch(clearSelectedRoomChat());
       if (activeJam?.kind === "group" && String(activeJam.groupId) === String(selectedRoomChat._id)) {
         dispatch(clearActiveJam());
@@ -171,18 +206,86 @@ const MessageContainer = () => {
     }
   };
 
+  const handleLeaveGroup = async () => {
+    if (!selectedRoomChat?._id) return;
+    setSavingGroup(true);
+    try {
+      await leaveRoomApi(selectedRoomChat._id);
+      dispatch(removeRoom(selectedRoomChat._id));
+      dispatch(clearSelectedRoomChat());
+      if (activeJam?.kind === "group" && String(activeJam.groupId) === String(selectedRoomChat._id)) {
+        dispatch(clearActiveJam());
+      }
+      setShowGroupMenu(false);
+      setShowGroupMembers(false);
+      toast.success("You left the group");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to leave group");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const handleAddMembers = async (e) => {
+    e.preventDefault();
+    if (!selectedRoomChat?._id || !pickedMembers.size) {
+      toast.error("Pick at least one member");
+      return;
+    }
+
+    setSavingGroup(true);
+    try {
+      const room = await addRoomMembersApi(selectedRoomChat._id, [...pickedMembers]);
+      syncUpdatedRoom(room);
+      setPickedMembers(new Set());
+      setShowAddMembers(false);
+      toast.success("Members added");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add members");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const handleToggleAdmin = async (memberId, makeAdmin) => {
+    if (!selectedRoomChat?._id) return;
+    setSavingGroup(true);
+    try {
+      const room = await updateRoomAdminApi(selectedRoomChat._id, memberId, makeAdmin);
+      syncUpdatedRoom(room);
+      toast.success(makeAdmin ? "Admin granted" : "Admin removed");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update admin");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const closeThread = () => {
+    dispatch(setselectedUser(null));
+    dispatch(clearSelectedRoomChat());
+  };
+
   return (
     <>
       {selectedUser !== null || selectedRoomChat ? (
-        <div className="flex min-h-0 flex-1 flex-col bg-[#080808]/30 backdrop-blur-md">
+        <div className="relative flex min-h-0 w-full flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(26,42,34,0.24),transparent_38%),linear-gradient(180deg,rgba(8,8,8,0.95),rgba(6,6,7,0.94))] backdrop-blur-md">
           <div
             className="
-        flex h-16 shrink-0 items-center
+        sticky top-0 z-10 flex min-h-16 shrink-0 items-center
         border-b border-white/[0.08]
-        bg-white/[0.06]
-        px-6
+        bg-[#111111]/92
+        px-4 sm:px-6
         "
           >
+            <button
+              type="button"
+              onClick={closeThread}
+              className="mr-3 rounded-full border border-white/10 bg-white/[0.05] p-2 text-zinc-300 lg:hidden"
+              aria-label="Back to inbox"
+            >
+              <IoArrowBack className="text-lg" />
+            </button>
             {isGroupThread ? (
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/35 to-cyan-500/20 text-emerald-200">
                 <IoPeople />
@@ -216,11 +319,11 @@ const MessageContainer = () => {
               ) : null}
             </div>
             {!isGroupThread ? (
-              <div className="mr-3 hidden rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-zinc-500 lg:block">
+              <div className="mr-3 hidden rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-zinc-500 xl:block">
                 {selectedInitial} • direct line
               </div>
             ) : null}
-            {isGroupThread && isGroupCreator ? (
+            {isGroupThread ? (
               <div ref={groupMenuRef} className="relative mr-2">
                 <button
                   type="button"
@@ -231,7 +334,7 @@ const MessageContainer = () => {
                   <IoEllipsisHorizontal className="text-lg" />
                 </button>
                 {showGroupMenu ? (
-                  <div className="absolute right-0 top-full z-20 mt-2 w-40 rounded-2xl border border-white/10 bg-zinc-950/95 p-1 shadow-2xl backdrop-blur">
+                  <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-2xl border border-white/10 bg-zinc-950/95 p-1 shadow-2xl backdrop-blur">
                     <button
                       type="button"
                       onClick={() => {
@@ -242,24 +345,50 @@ const MessageContainer = () => {
                     >
                       Members
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowRenameGroup(true);
-                        setShowGroupMenu(false);
-                      }}
-                      className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10"
-                    >
-                      Rename group
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDeleteGroup}
-                      disabled={savingGroup}
-                      className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      Delete group
-                    </button>
+                    {isGroupAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddMembers(true);
+                          setShowGroupMenu(false);
+                        }}
+                        className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10"
+                      >
+                        Add members
+                      </button>
+                    ) : null}
+                    {isGroupAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRenameGroup(true);
+                          setShowGroupMenu(false);
+                        }}
+                        className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/10"
+                      >
+                        Rename group
+                      </button>
+                    ) : null}
+                    {!isGroupCreator ? (
+                      <button
+                        type="button"
+                        onClick={handleLeaveGroup}
+                        disabled={savingGroup}
+                        className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                      >
+                        Leave group
+                      </button>
+                    ) : null}
+                    {isGroupCreator ? (
+                      <button
+                        type="button"
+                        onClick={handleDeleteGroup}
+                        disabled={savingGroup}
+                        className="flex w-full rounded-xl px-3 py-2 text-left text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                      >
+                        Delete group
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -296,7 +425,7 @@ const MessageContainer = () => {
                   );
                 }
               }}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              className={`ml-2 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                 isGroupThread
                   ? jamWithThisGroup
                     ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40"
@@ -398,11 +527,33 @@ const MessageContainer = () => {
                       </p>
                       <p className="truncate text-xs text-zinc-500">@{member.userName}</p>
                     </div>
-                    {isCreator ? (
-                      <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                        Creator
-                      </span>
-                    ) : null}
+                    <div className="flex items-center gap-2">
+                      {((selectedRoomChat?.admins || []).some((adminId) => String(adminId) === String(member?._id)) ||
+                        isCreator) ? (
+                        <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                          {isCreator ? "Creator" : "Admin"}
+                        </span>
+                      ) : null}
+                      {isGroupCreator && !isCreator ? (
+                        <button
+                          type="button"
+                          disabled={savingGroup}
+                          onClick={() =>
+                            handleToggleAdmin(
+                              member._id,
+                              !((selectedRoomChat?.admins || []).some(
+                                (adminId) => String(adminId) === String(member._id),
+                              )),
+                            )
+                          }
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-50"
+                        >
+                          {(selectedRoomChat?.admins || []).some((adminId) => String(adminId) === String(member._id))
+                            ? "Remove admin"
+                            : "Make admin"}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
@@ -414,6 +565,66 @@ const MessageContainer = () => {
             >
               Close
             </button>
+          </div>
+        </div>
+      ) : null}
+      {showAddMembers && isGroupThread ? (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,20,0.98),rgba(10,10,12,0.98))] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-400/90">
+                  Add members
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-white">Invite more people</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddMembers(false)}
+                className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-zinc-300"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleAddMembers} className="mt-5 space-y-4">
+              <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                {selectableMembers.length ? (
+                  selectableMembers.map((member) => (
+                    <label
+                      key={member._id}
+                      className="flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-2 hover:bg-white/[0.06]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={pickedMembers.has(String(member._id))}
+                        onChange={() => togglePickedMember(member._id)}
+                        className="rounded border-white/20"
+                      />
+                      <img
+                        src={member.profilePhoto}
+                        alt={member.fullName}
+                        className="h-9 w-9 rounded-full object-cover"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-white">{member.fullName}</p>
+                        <p className="truncate text-xs text-zinc-500">@{member.userName}</p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+                    No more users available to add
+                  </div>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={savingGroup || !pickedMembers.size}
+                className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-zinc-100 disabled:opacity-50"
+              >
+                {savingGroup ? "Adding..." : "Add selected members"}
+              </button>
+            </form>
           </div>
         </div>
       ) : null}

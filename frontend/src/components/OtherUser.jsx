@@ -17,7 +17,7 @@ const OtherUser = (prop) => {
     <button
       type="button"
       onClick={() => selectedUserHandler(prop.user)}
-      className={`${isSelected ? "bg-white/18 ring-1 ring-white/12" : ""} flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${isSelected ? "hover:bg-white/18" : "hover:bg-white/[0.08]"}`}
+      className={`${isSelected ? "bg-white/18 ring-1 ring-white/12" : ""} flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all ${isSelected ? "hover:bg-white/18" : "hover:bg-white/[0.08]"}`}
     >
       <div className={`avatar ${isOnline ? "avatar-online" : ""}`}>
         <img
@@ -35,7 +35,7 @@ const OtherUser = (prop) => {
       </div>
 
       <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-        {isSelected ? "open" : "dm"}
+        {isSelected ? "open" : "chat"}
       </span>
     </button>
   );

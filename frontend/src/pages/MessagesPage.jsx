@@ -5,9 +5,13 @@ import MessageContainer from "../components/MessageContainer.jsx";
 import useGetOtherUsers from "../hooks/useGetOtherUsers.jsx";
 import { listRooms } from "../api/roomsApi.js";
 import { setRoomsList } from "../redux/roomsSlice.js";
+import { useSelector } from "react-redux";
 
 const MessagesPage = () => {
   const dispatch = useDispatch();
+  const selectedUser = useSelector((store) => store.user.selectedUser);
+  const selectedRoomChat = useSelector((store) => store.rooms.selectedRoomChat);
+  const hasOpenThread = Boolean(selectedUser?._id || selectedRoomChat?._id);
   useGetOtherUsers();
 
   useEffect(() => {
@@ -31,8 +35,12 @@ const MessagesPage = () => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
-      <ChatSidebar />
-      <MessageContainer />
+      <div className={`${hasOpenThread ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 w-full lg:w-auto`}>
+        <ChatSidebar />
+      </div>
+      <div className={`${hasOpenThread ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-1`}>
+        <MessageContainer />
+      </div>
     </div>
   );
 };

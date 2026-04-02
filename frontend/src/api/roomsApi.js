@@ -24,3 +24,18 @@ export async function deleteRoom(id) {
   const { data } = await apiClient.delete(`/api/v1/rooms/${id}`);
   return data;
 }
+
+export async function addRoomMembers(id, memberIds) {
+  const { data } = await apiClient.post(`/api/v1/rooms/${id}/members`, { memberIds });
+  return data;
+}
+
+export async function leaveRoom(id) {
+  const { data } = await apiClient.post(`/api/v1/rooms/${id}/leave`);
+  return data;
+}
+
+export async function updateRoomAdmin(id, memberId, makeAdmin) {
+  const { data } = await apiClient.post(`/api/v1/rooms/${id}/admins`, { memberId, makeAdmin });
+  return data;
+}

@@ -114,12 +114,7 @@ const SendInput = () => {
   return (
     <form
       onSubmit={onSubmitHandler}
-      className="
-      flex gap-3
-      p-4
-      border-t border-white/10
-      bg-white/5
-      "
+      className="mx-1 mb-1.5 mt-1 flex gap-2 rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(19,19,20,0.98),rgba(13,13,14,0.96))] px-3 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.24)] backdrop-blur-xl sm:mx-4 sm:mb-4 sm:mt-3 sm:gap-3 sm:px-4 sm:py-4"
     >
       <input
         placeholder={
@@ -132,16 +127,16 @@ const SendInput = () => {
         className="
         w-full
         px-4
-        py-2
-        rounded-xl
-        bg-black/30
+        py-3
+        rounded-2xl
+        bg-black/35
         backdrop-blur-3xl
         border border-white/10
         text-sm
         text-white
         focus:outline-none
         focus:ring-2
-        focus:ring-indigo-500
+        focus:ring-emerald-500
         "
         value={message}
         onChange={(e) => {
@@ -161,12 +156,12 @@ const SendInput = () => {
           type="submit"
           disabled={sending}
           className="
-          px-5
-          py-2
-          rounded-xl
+          px-4
+          py-3
+          rounded-2xl
           bg-linear-to-r
-          from-indigo-500
-          to-violet-500
+          from-emerald-500
+          to-green-600
           text-white
           hover:scale-105
           transition
@@ -175,7 +170,7 @@ const SendInput = () => {
           disabled:opacity-50 disabled:hover:scale-100
           "
         >
-          <IoSend />
+          <IoSend className="text-lg" />
         </button>
         <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-600"></span>
       </div>

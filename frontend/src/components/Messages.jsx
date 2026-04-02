@@ -49,7 +49,7 @@ const Messages = () => {
     <div
       ref={scrollRef}
       onScroll={onScroll}
-      className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto p-6"
+      className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(36,69,52,0.16),transparent_28%)] px-3 py-4 pb-2 sm:space-y-4 sm:p-6"
     >
       {loadingOlder ? (
         <p className="text-center text-xs text-zinc-500">Loading older messages…</p>
@@ -61,7 +61,7 @@ const Messages = () => {
         <p className="text-center text-sm text-zinc-400">Loading messages…</p>
       ) : null}
       {!loadingInitial && messages.length === 0 ? (
-        <div className="mx-auto my-auto max-w-sm rounded-3xl border border-white/[0.08] bg-white/[0.03] px-6 py-8 text-center">
+        <div className="mx-auto my-auto max-w-sm rounded-[30px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(20,20,21,0.88),rgba(13,13,14,0.82))] px-6 py-8 text-center shadow-[0_18px_45px_rgba(0,0,0,0.16)]">
           <p className="text-sm font-semibold text-white">No messages yet</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             {selectedRoomChat

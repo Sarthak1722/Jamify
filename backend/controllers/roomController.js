@@ -2,9 +2,27 @@ import mongoose from "mongoose";
 import { GroupRoom } from "../models/groupRoomModel.js";
 import { User } from "../models/userModel.js";
 import { Message } from "../models/messageModel.js";
+import { emitRoomDeletedToUsers, emitRoomUpsertToUsers } from "../socket/socket.js";
 
 function uniqueIds(ids) {
   return [...new Set(ids.map((id) => String(id)).filter(Boolean))];
+}
+
+function isCreator(room, userId) {
+  return String(room.createdBy) === String(userId);
+}
+
+function isAdmin(room, userId) {
+  return (
+    isCreator(room, userId) ||
+    (room.admins || []).some((adminId) => String(adminId) === String(userId))
+  );
+}
+
+async function populateRoom(roomId) {
+  return GroupRoom.findById(roomId)
+    .populate("members", "fullName userName profilePhoto")
+    .lean();
 }
 
 export const createRoom = async (req, res) => {
@@ -33,12 +51,12 @@ export const createRoom = async (req, res) => {
     const room = await GroupRoom.create({
       name: String(name).trim(),
       members,
+      admins: [me],
       createdBy: me,
     });
 
-    const populated = await GroupRoom.findById(room._id)
-      .populate("members", "fullName userName profilePhoto")
-      .lean();
+    const populated = await populateRoom(room._id);
+    emitRoomUpsertToUsers(populated, members);
 
     return res.status(201).json(populated);
   } catch (e) {
@@ -100,16 +118,15 @@ export const updateRoom = async (req, res) => {
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
     }
-    if (String(room.createdBy) !== String(req.id)) {
-      return res.status(403).json({ message: "Only the group creator can rename this group" });
+    if (!isAdmin(room, req.id)) {
+      return res.status(403).json({ message: "Only group admins can rename this group" });
     }
 
     room.name = String(name).trim();
     await room.save();
 
-    const populated = await GroupRoom.findById(room._id)
-      .populate("members", "fullName userName profilePhoto")
-      .lean();
+    const populated = await populateRoom(room._id);
+    emitRoomUpsertToUsers(populated, room.members);
 
     return res.status(200).json(populated);
   } catch (e) {
@@ -134,12 +151,126 @@ export const deleteRoom = async (req, res) => {
       return res.status(403).json({ message: "Only the group creator can delete this group" });
     }
 
+    const memberIds = await GroupRoom.findById(room._id).select("members").lean();
     await Message.deleteMany({ roomID: room._id });
     await GroupRoom.deleteOne({ _id: room._id });
+    emitRoomDeletedToUsers(room._id, memberIds?.members || []);
 
     return res.status(200).json({ success: true, roomId: String(room._id) });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Failed to delete room" });
+  }
+};
+
+export const addRoomMembers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { memberIds = [] } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid room id" });
+    }
+
+    const room = await GroupRoom.findOne({ _id: id, members: req.id });
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+    if (!isAdmin(room, req.id)) {
+      return res.status(403).json({ message: "Only group admins can add members" });
+    }
+
+    const uniqueMemberIds = uniqueIds(memberIds);
+    if (!uniqueMemberIds.length) {
+      return res.status(400).json({ message: "Pick at least one member to add" });
+    }
+
+    for (const memberId of uniqueMemberIds) {
+      if (!mongoose.Types.ObjectId.isValid(memberId)) {
+        return res.status(400).json({ message: `Invalid member id: ${memberId}` });
+      }
+      const exists = await User.findById(memberId).select("_id");
+      if (!exists) {
+        return res.status(400).json({ message: `User not found: ${memberId}` });
+      }
+    }
+
+    room.members = uniqueIds([...room.members.map((member) => String(member)), ...uniqueMemberIds]);
+    await room.save();
+
+    const populated = await populateRoom(room._id);
+    emitRoomUpsertToUsers(populated, room.members);
+    return res.status(200).json(populated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Failed to add members" });
+  }
+};
+
+export const leaveRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid room id" });
+    }
+
+    const room = await GroupRoom.findOne({ _id: id, members: req.id });
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+    if (isCreator(room, req.id)) {
+      return res.status(403).json({ message: "The group creator cannot leave the group" });
+    }
+
+    room.members = room.members.filter((memberId) => String(memberId) !== String(req.id));
+    room.admins = (room.admins || []).filter((adminId) => String(adminId) !== String(req.id));
+    await room.save();
+    const populated = await populateRoom(room._id);
+    emitRoomDeletedToUsers(room._id, [req.id]);
+    emitRoomUpsertToUsers(populated, room.members);
+
+    return res.status(200).json({ success: true, roomId: String(room._id) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Failed to leave room" });
+  }
+};
+
+export const updateRoomAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { memberId, makeAdmin } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(String(memberId))) {
+      return res.status(400).json({ message: "Invalid room or member id" });
+    }
+
+    const room = await GroupRoom.findOne({ _id: id, members: req.id });
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+    if (!isCreator(room, req.id)) {
+      return res.status(403).json({ message: "Only the group creator can manage admins" });
+    }
+    if (String(memberId) === String(room.createdBy)) {
+      return res.status(400).json({ message: "The creator already has full access" });
+    }
+    if (!(room.members || []).some((currentId) => String(currentId) === String(memberId))) {
+      return res.status(400).json({ message: "That user is not in the group" });
+    }
+
+    const currentAdmins = uniqueIds(room.admins || []);
+    room.admins = makeAdmin
+      ? uniqueIds([...currentAdmins, memberId])
+      : currentAdmins.filter((adminId) => String(adminId) !== String(memberId));
+    await room.save();
+
+    const populated = await populateRoom(room._id);
+    emitRoomUpsertToUsers(populated, room.members);
+    return res.status(200).json(populated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Failed to update admin privileges" });
   }
 };
