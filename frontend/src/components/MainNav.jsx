@@ -58,7 +58,7 @@ const MainNav = () => {
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0c0c0c]/95 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-4 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1DB954] to-emerald-700 text-lg font-black text-black shadow-lg shadow-emerald-900/40">
-          S
+          J🎶
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight text-white">Jamify</p>
