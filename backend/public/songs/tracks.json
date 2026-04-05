@@ -44,6 +44,15 @@
       "album": "When Chai Met Toast",
       "duration": "3:15",
       "url": "/songs/Constellation.mp3"
+    },
+    {
+      "id": "local-6",
+      "title": "Snowfall",
+      "artist": "øneheart x reidenshi",
+      "file": "snowfall.mp3",
+      "album": "dreamscape",
+      "duration": "2:04",
+      "url": "/songs/snowfall.mp3"
     }
   ]
 }
