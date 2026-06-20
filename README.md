@@ -1,5 +1,12 @@
 # Jamify 🎵
 
+![React](https://img.shields.io/badge/React-18-blue)
+![Node.js](https://img.shields.io/badge/Node.js-Backend-green)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-darkgreen)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-Realtime-black)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+
+
 A full-stack real-time music collaboration platform where users can chat, create jam rooms, and listen to music together with synchronized playback.
 
 Built with modern web architecture using React, Node.js, MongoDB, Socket.IO, JWT authentication, and cloud media storage.
