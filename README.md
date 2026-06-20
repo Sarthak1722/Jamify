@@ -291,7 +291,7 @@ npm run dev
 
 ## Demo
 
-[([Add deployment link](https://jamify-nly7.onrender.com/)
+[Try Jamify](https://jamify-nly7.onrender.com/)
 
 ---
 
