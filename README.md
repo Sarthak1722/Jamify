@@ -1,199 +1,308 @@
-# Soundgram — React chat + synced playback
+# Jamify 🎵
 
-Full-stack demo: **JWT auth**, **REST + cookies**, **MongoDB**, **Socket.IO** for real-time **messages**, **typing**, **read receipts**, and **shared music playback** (1:1 or **group jam rooms**). Audio plays **only in the browser**; the server holds playback state and broadcasts updates.
+A full-stack real-time music collaboration platform where users can chat, create jam rooms, and listen to music together with synchronized playback.
 
-Media posts now use a smarter split:
-- **MongoDB** for post metadata
-- **Cloudinary** for actual image/video storage and delivery
+Built with modern web architecture using React, Node.js, MongoDB, Socket.IO, JWT authentication, and cloud media storage.
 
 ---
 
-## Quick start
+## Core Features
+
+### Authentication & Security
+- JWT authentication with httpOnly cookies
+- Secure login/register/logout flow
+- Protected API routes with middleware authorization
+
+### Real-Time Messaging
+- One-to-one private messaging
+- Group chat rooms
+- Live typing indicators
+- Message delivery tracking
+- Read receipts
+- Online/offline presence detection
+
+### Collaborative Music Playback
+- Synchronized playback across users
+- Create private or group jam sessions
+- Play / Pause / Seek synchronization
+- Track switching in real-time
+- Shared playback state maintained on server
+
+### Social Media Features
+- Upload image/video posts
+- Cloudinary-based media storage
+- MongoDB metadata persistence
+- User profile content feed
+
+### Scalable Architecture
+- Socket.IO real-time communication
+- REST API architecture
+- Redux global state management
+- Persistent authentication state
+- Modular backend design
+
+---
+
+## System Architecture
+
+```
+Frontend (React + Redux)
+            │
+            │ HTTP + Cookies
+            ▼
+Backend API (Express.js)
+            │
+ ┌──────────┼──────────┐
+ │          │          │
+ ▼          ▼          ▼
+MongoDB   Socket.IO   Cloudinary
+(Database) Real-Time  Media Storage
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---------|------------|
+| Frontend | React + Vite |
+| State Management | Redux Toolkit |
+| Backend | Node.js + Express |
+| Database | MongoDB |
+| Real-Time | Socket.IO |
+| Authentication | JWT + Cookies |
+| Media Storage | Cloudinary |
+| API | REST APIs |
+| Deployment | Render / Vercel |
+| Styling | Tailwind CSS |
+
+---
+
+## Repository Structure
+
+```bash
+jamify/
+
+backend/
+ ├── config/
+ ├── controllers/
+ ├── middleware/
+ ├── models/
+ ├── playback/
+ ├── routes/
+ ├── socket/
+ └── index.js
+
+frontend/
+ ├── src/
+ │   ├── api/
+ │   ├── components/
+ │   ├── context/
+ │   ├── hooks/
+ │   ├── redux/
+ │   ├── pages/
+ │   └── utils/
+ └── main.jsx
+```
+
+---
+
+## Backend Architecture
+
+The backend follows a modular layered architecture.
+
+```
+HTTP Request
+      │
+      ▼
+Express Router
+      │
+      ▼
+Controller Layer
+      │
+      ▼
+Business Logic Layer
+      │
+      ▼
+Socket Event Layer
+      │
+      ▼
+MongoDB / Cloudinary
+```
+
+---
+
+## Real-Time Event System
+
+### Chat Events
+
+```javascript
+newMessage
+typing
+stopTyping
+messagesRead
+getOnlineUsers
+```
+
+### Playback Events
+
+```javascript
+playbackJoin
+playbackLeave
+play
+pause
+seek
+changeTrack
+nextTrack
+prevTrack
+playbackUpdate
+```
+
+---
+
+## Database Design
+
+### Collections
+
+```text
+User
+Message
+Conversation
+GroupRoom
+Post
+```
+
+Relationships:
+
+```
+User
+  ├── Messages
+  ├── Conversations
+  ├── Posts
+  └── GroupRooms
+```
+
+---
+
+## API Endpoints
+
+### Authentication
+
+```http
+POST /api/v1/user/register
+POST /api/v1/user/login
+GET  /api/v1/user/logout
+```
+
+### Messaging
+
+```http
+POST /api/v1/message/send/:receiverId
+GET  /api/v1/message/:peerId
+```
+
+### Playback
+
+```http
+GET /api/v1/playback/tracks
+```
+
+### Rooms
+
+```http
+GET  /api/v1/rooms
+POST /api/v1/rooms
+GET  /api/v1/rooms/:id
+```
+
+### Posts
+
+```http
+GET  /api/v1/posts/me
+POST /api/v1/posts
+```
+
+---
+
+## Key Engineering Challenges Solved
+
+### Real-Time Synchronization
+
+Maintained consistent music playback state across multiple clients using server-authoritative synchronization.
+
+### Socket State Management
+
+Prevented duplicate socket connections using centralized SocketProvider architecture.
+
+### Optimistic UI Updates
+
+Implemented optimistic message delivery with reconciliation using clientMessageId.
+
+### Media Storage Optimization
+
+Separated media storage from metadata persistence using Cloudinary + MongoDB hybrid architecture.
+
+---
+
+## Running Locally
 
 ### Backend
 
 ```bash
 cd backend
-cp .env.example .env   # if you use one; set PORT, MONGODB_URI, JWT_SECRET_KEY
 npm install
 npm run dev
 ```
-
-- Serves HTTP + Socket.IO on `PORT` (binds `0.0.0.0` for LAN).
-- Static MP3s: add files under `backend/public/songs/` to match `tracks.json`.
-- Cloud posts require `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in `backend/.env`.
 
 ### Frontend
 
 ```bash
 cd frontend
-# VITE_API_URL must match your API origin, e.g. http://localhost:8080
 npm install
 npm run dev
 ```
 
 ---
 
-## Repository layout
+## Future Improvements
 
-```
-backend/
-  config/           # Mongo connection
-  controllers/    # HTTP handlers (user, message, playback, rooms)
-  middleware/       # isAuthenticated (JWT from cookie)
-  models/           # Mongoose: User, Message, Conversation, GroupRoom
-  models/postModel.js
-  playback/         # In-memory playback state + socket wiring + track catalog loader
-  public/songs/     # tracks.json + .mp3 files (served at /songs)
-  routes/           # Express routers mounted under /api/v1/*
-  socket/socket.js  # Socket.IO server + chat + playback handlers
-  index.js          # Express app (from socket.js), static /songs, listen()
-
-frontend/
-  src/
-    api/            # Axios wrappers (messages, playback, rooms)
-    components/     # UI (nav, chat, playback bar, …)
-    components/playback/
-    context/        # SocketProvider — one io() client per logged-in user
-    hooks/          # useChatSocket, usePlaybackSocket, useGetMessages, …
-    pages/          # Route-level screens (Discover, Messages, Rooms, …)
-    redux/          # store, slices (user, messages, playback, rooms)
-    utils/          # Pure helpers (message ids, playback time)
-  main.jsx          # Redux Provider, PersistGate, SocketProvider, App
-  App.jsx           # Router + useChatSocket()
-```
+- Spotify API integration
+- WebRTC voice rooms
+- Recommendation engine
+- Redis caching layer
+- Kubernetes deployment
+- Microservices architecture
+- Kafka event streaming
 
 ---
 
-## How frontend and backend connect
+## Screenshots
 
-| Layer | Role |
-|--------|------|
-| **HTTP** | Login/register, logout, list users, messages CRUD, playback track list, **group rooms** CRUD. Uses `axios` + `withCredentials: true` so the **httpOnly** JWT cookie is sent. |
-| **Socket.IO** | Same origin as API (`VITE_API_URL`). Handshake query: `userId=<mongo _id>`. Used for online users, typing, read receipts, **newMessage**, and **playbackUpdate** / playback commands. |
+<img width="1440" height="777" alt="Screenshot 2026-06-20 at 4 22 29 PM" src="https://github.com/user-attachments/assets/036daef9-bdec-48b1-84d4-6dd2079c75b9" />
+<img width="1440" height="777" alt="Screenshot 2026-06-20 at 4 24 40 PM" src="https://github.com/user-attachments/assets/a1886004-668f-4108-b96c-e9de973b78c4" />
+<img width="1440" height="776" alt="Screenshot 2026-06-20 at 4 24 26 PM" src="https://github.com/user-attachments/assets/44481368-b04f-4df8-a227-858ac95f5f05" />
+<img width="1440" height="777" alt="Screenshot 2026-06-20 at 4 24 13 PM" src="https://github.com/user-attachments/assets/09669ae1-e86f-481e-90c6-fc71a983944c" />
+<img width="1440" height="776" alt="Screenshot 2026-06-20 at 4 23 52 PM" src="https://github.com/user-attachments/assets/0fed830b-b7d1-47e0-993e-3d2b70bab988" />
+<img width="1440" height="776" alt="Screenshot 2026-06-20 at 4 23 35 PM" src="https://github.com/user-attachments/assets/331ce0e9-2e45-4380-8f84-2bc836affe19" />
+<img width="1440" height="778" alt="Screenshot 2026-06-20 at 4 23 18 PM" src="https://github.com/user-attachments/assets/0372a5ad-04a1-408f-a1bf-d2611ce76a89" />
 
-CORS + Socket.IO `origin` must include your Vite dev URL (e.g. `http://localhost:5173`).
-
----
-
-## Redux store (what lives where)
-
-Configured in `frontend/src/redux/store.js` with **redux-persist** (only **`user`** is persisted — see `whitelist`).
-
-| Slice | Purpose |
-|--------|---------|
-| **`user`** | `authUser`, `otherUsers`, `selectedUser`, `onlineUsers` |
-| **`messages`** | Current thread messages, pagination flag, `peerTyping` |
-| **`playback`** | Mirror of server playback state for the **active jam room** (`currentTrack`, `isPlaying`, `positionSeconds`, `playheadEpochMs`, `serverNow`, …). **No** `Audio` or `socket` here. |
-| **`rooms`** | `list` (your `GroupRoom` documents from API), **`activeJam`** — which context drives playback |
-
-### `activeJam` (drives `usePlaybackSocket`)
-
-- **`{ kind: 'dm', peerId, label }`** — Socket room id is a **deterministic pair** `playback:<sorted user ids>` (computed on server).
-- **`{ kind: 'group', roomId: 'group:<mongoId>', groupId, label }`** — Everyone in that `GroupRoom` may join; server checks **membership** before applying playback actions.
-
-Setting **`activeJam`** is done from:
-
-- **Messages** header: **Jam together** / **DM jam on** (toggles DM jam for the open chat).
-- **Jam rooms** page: **Enter jam** on a group card.
-
-**Clear active jam**: Rooms page “Clear active jam”, or toggle off DM jam, or log out.
 
 ---
 
-## Socket.IO — connection and events
+## Demo
 
-### Connection (`frontend/src/context/SocketContext.jsx`)
-
-- Created when `authUser._id` exists.
-- `io(VITE_API_URL, { query: { userId: authUser._id } })`.
-- **Not** stored in Redux (non-serializable).
-- Provider is **outside** `<StrictMode>` in `main.jsx` so dev double-mount does not tear down the handshake.
-
-### Chat (`frontend/src/hooks/useChatSocket.js`)
-
-| Event | Direction | Action |
-|--------|-----------|--------|
-| `newMessage` | server → client | `receiveSocketMessage` (reconcile optimistic sends via `clientMessageId`) |
-| `getOnlineUsers` | server → client | `setonlineUsers` |
-| `messagesRead` | server → client | `applyMessagesRead` |
-| `peerTyping` | server → client | `setPeerTyping` |
-| `typing` / `stopTyping` | client → server | from `SendInput` |
-| `markRead` | client → server | from `MessageContainer` |
-
-### Playback (`frontend/src/hooks/usePlaybackSocket.js`)
-
-Mounted once inside **`PlaybackActionsProvider`** (see `Homepage.jsx`).
-
-| Client → server | When |
-|-----------------|------|
-| `playbackJoin` | `{ peerUserId }` **or** `{ roomId: 'group:…' }` |
-| `playbackLeave` | Leaving jam / unmount / logout |
-| `play` / `pause` / `seek` / `changeTrack` / `nextTrack` / `prevTrack` | Payload includes **`peerUserId`** (DM) **or** **`roomId`** (group) matching joined room |
-
-| Server → client | Payload |
-|-----------------|--------|
-| `playbackUpdate` | Full room state: `roomId`, `currentTrack`, `isPlaying`, `positionSeconds`, `playheadEpochMs`, `serverNow`, `updatedBy` |
-
-**UI rule:** the bottom player **only emits** the events above; **`<audio>`** is synced from Redux via **`usePlaybackAudioSync`**, which reacts to `playbackUpdate`–driven state.
-
-### Server-side playback (`backend/playback/`)
-
-- **`playbackStore.js`** — `Map<roomId, state>`; play/pause/seek/track mutations; **`buildPlaybackPayload`**.
-- **`playbackSocket.js`** — joins socket to `roomId`, validates **group** membership via **`groupPlaybackAccess.js`** + `GroupRoom` model, then **`io.to(roomId).emit('playbackUpdate', …)`**.
+[([Add deployment link](https://jamify-nly7.onrender.com/)
 
 ---
 
-## MongoDB models (backend)
+## Learning Outcomes
 
-- **User** — auth profile.
-- **Message** — `senderID`, `receiverID`, text, optional `clientMessageId`, `deliveredAt`, `readAt`.
-- **Conversation** — participant ids + message id refs (messages also queried by pair for pagination).
-- **GroupRoom** — `name`, `members[]`, `createdBy` — used for **jam rooms** and **playback authorization**.
+This project helped me understand:
 
----
-
-## HTTP API overview
-
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/api/v1/user/register` | No |
-| POST | `/api/v1/user/login` | Sets cookie |
-| GET | `/api/v1/user/logout` | Yes |
-| GET | `/api/v1/user/` | Yes — directory of other users |
-| POST | `/api/v1/message/send/:receiverId` | Yes |
-| GET | `/api/v1/message/:peerId` | Yes — `?before=&limit=` pagination |
-| GET | `/api/v1/playback/tracks` | Yes — static catalog URLs |
-| GET/POST | `/api/v1/rooms` | Yes — list / create group room |
-| GET | `/api/v1/rooms/:id` | Yes — detail if member |
-| GET | `/api/v1/posts/me` | Yes — logged-in user posts |
-| POST | `/api/v1/posts` | Yes — create image/video post via Cloudinary |
-
----
-
-## Shared playback: DM vs group
-
-- **DM:** room key `playback:<idA>:<idB>` (sorted). Any two users who joined via `playbackJoin` + `peerUserId` share state.
-- **Group:** room key `group:<GroupRoom._id>`. Only users listed in **`GroupRoom.members`** pass **`assertPlaybackRoomAccess`** for playback actions.
-
----
-
-## Phase 2: Spotify (hint)
-
-1. Replace **`loadTrackCatalog()`** / **`GET /playback/tracks`** with Spotify metadata + preview or stream URLs.
-2. Keep the **`{ id, title, artist, url }`** shape returned to clients so **`playbackStore`** and the Redux **`playback`** slice stay unchanged.
-
----
-
-## Scripts
-
-| | Frontend | Backend |
-|---|----------|---------|
-| Dev | `npm run dev` | `npm run dev` (nodemon) |
-| Build | `npm run build` | — |
-
----
-
-## License
-
-Personal / study project — adjust as needed.
+- WebSocket architecture
+- Real-time distributed state synchronization
+- JWT authentication flows
+- Full-stack application design
+- Cloud media delivery systems
+- Redux state management patterns
+- Production-grade API design
