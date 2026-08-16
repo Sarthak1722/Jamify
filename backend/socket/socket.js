@@ -15,7 +15,7 @@ const server = http.createServer(app);
 
 const io = new Server(server);
 
-/** @type {Record<string, string>} userId (string) -> socket.id */
+/** @type {Record<string, Set<string>>} userId (string) -> Set of socket.ids */
 const userSocketMap = {};
 
 function mapOtherUsers(allUsers, currentUserId) {
@@ -62,7 +62,9 @@ export async function emitPresenceSnapshotToSocket(socket, userId, allUsers = nu
   }
 
   const users = Array.isArray(allUsers) ? allUsers : await loadAllUsers();
-  const onlineUsers = Object.keys(userSocketMap);
+  const onlineUsers = Object.keys(userSocketMap).filter(
+    (id) => userSocketMap[id] && userSocketMap[id].size > 0,
+  );
   const otherUsers = mapOtherUsers(users, userId);
 
   socket.emit("getOnlineUsers", onlineUsers);
@@ -89,7 +91,16 @@ export async function broadcastPresenceSnapshots() {
 
 export function getSocketIdForUser(userId) {
   if (userId == null || userId === "undefined") return undefined;
-  return userSocketMap[String(userId)];
+  const set = userSocketMap[String(userId)];
+  if (!set || set.size === 0) return undefined;
+  return Array.from(set)[set.size - 1];
+}
+
+export function getSocketIdsForUser(userId) {
+  if (userId == null || userId === "undefined") return [];
+  const set = userSocketMap[String(userId)];
+  if (!set || set.size === 0) return [];
+  return Array.from(set);
 }
 
 /**
@@ -135,25 +146,25 @@ function toMessagePayload(doc) {
  */
 export function emitNewMessageToParticipants(senderId, receiverId, messageDoc) {
   const payload = toMessagePayload(messageDoc);
-  const senderSocketId = getSocketIdForUser(senderId);
-  const receiverSocketId = getSocketIdForUser(receiverId);
+  const senderSocketIds = getSocketIdsForUser(senderId);
+  const receiverSocketIds = getSocketIdsForUser(receiverId);
 
-  if (senderSocketId) {
-    io.to(senderSocketId).emit("newMessage", payload);
-  }
-  if (receiverSocketId) {
-    io.to(receiverSocketId).emit("newMessage", payload);
-  }
+  senderSocketIds.forEach((socketId) => {
+    io.to(socketId).emit("newMessage", payload);
+  });
+  receiverSocketIds.forEach((socketId) => {
+    io.to(socketId).emit("newMessage", payload);
+  });
 }
 
 export function emitNewGroupMessageToRoom(roomId, memberIds = [], messageDoc) {
   const payload = toMessagePayload(messageDoc);
   io.to(groupChatSocketRoom(roomId)).emit("groupMessage", payload);
   memberIds.forEach((memberId) => {
-    const socketId = getSocketIdForUser(memberId);
-    if (socketId) {
+    const socketIds = getSocketIdsForUser(memberId);
+    socketIds.forEach((socketId) => {
       io.to(socketId).emit("groupMessage", payload);
-    }
+    });
   });
 }
 
@@ -161,20 +172,20 @@ export function emitRoomUpsertToUsers(room, targetUserIds = []) {
   const payload = toRoomPayload(room);
   if (!payload) return;
   targetUserIds.forEach((userId) => {
-    const socketId = getSocketIdForUser(userId);
-    if (socketId) {
+    const socketIds = getSocketIdsForUser(userId);
+    socketIds.forEach((socketId) => {
       io.to(socketId).emit("roomUpsert", payload);
-    }
+    });
   });
 }
 
 export function emitRoomDeletedToUsers(roomId, targetUserIds = []) {
   const payload = { roomId: String(roomId) };
   targetUserIds.forEach((userId) => {
-    const socketId = getSocketIdForUser(userId);
-    if (socketId) {
+    const socketIds = getSocketIdsForUser(userId);
+    socketIds.forEach((socketId) => {
       io.to(socketId).emit("roomDeleted", payload);
-    }
+    });
   });
 }
 
@@ -200,7 +211,10 @@ io.on("connection", (socket) => {
     rawUserId != null && String(rawUserId) !== "undefined" ? String(rawUserId) : null;
 
   if (userId) {
-    userSocketMap[userId] = socket.id;
+    if (!userSocketMap[userId]) {
+      userSocketMap[userId] = new Set();
+    }
+    userSocketMap[userId].add(socket.id);
     socket.data.userId = userId;
   }
 
@@ -221,14 +235,18 @@ io.on("connection", (socket) => {
 
   socket.on("typing", ({ toUserId }) => {
     if (!userId || !toUserId) return;
-    const sid = getSocketIdForUser(toUserId);
-    if (sid) io.to(sid).emit("peerTyping", { fromUserId: userId, typing: true });
+    const sids = getSocketIdsForUser(toUserId);
+    sids.forEach((sid) => {
+      io.to(sid).emit("peerTyping", { fromUserId: userId, typing: true });
+    });
   });
 
   socket.on("stopTyping", ({ toUserId }) => {
     if (!userId || !toUserId) return;
-    const sid = getSocketIdForUser(toUserId);
-    if (sid) io.to(sid).emit("peerTyping", { fromUserId: userId, typing: false });
+    const sids = getSocketIdsForUser(toUserId);
+    sids.forEach((sid) => {
+      io.to(sid).emit("peerTyping", { fromUserId: userId, typing: false });
+    });
   });
 
   socket.on("groupChatJoin", async ({ roomId }) => {
@@ -292,13 +310,13 @@ io.on("connection", (socket) => {
       const ids = list.map((d) => d._id);
       const now = new Date();
       await Message.updateMany({ _id: { $in: ids } }, { $set: { readAt: now } });
-      const senderSock = getSocketIdForUser(withUserId);
-      if (senderSock) {
+      const senderSocks = getSocketIdsForUser(withUserId);
+      senderSocks.forEach((senderSock) => {
         io.to(senderSock).emit("messagesRead", {
           messageIds: ids.map((id) => String(id)),
           readAt: now.toISOString(),
         });
-      }
+      });
     } catch (e) {
       console.error("markRead", e);
     }
@@ -322,8 +340,11 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("user disconnected", socket.id);
     detachPlaybackOnDisconnect(socket);
-    if (userId) {
-      delete userSocketMap[userId];
+    if (userId && userSocketMap[userId]) {
+      userSocketMap[userId].delete(socket.id);
+      if (userSocketMap[userId].size === 0) {
+        delete userSocketMap[userId];
+      }
     }
     void broadcastPresenceSnapshots().catch((error) => {
       console.error("presence broadcast failed", error);

@@ -7,7 +7,7 @@ const envDir = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, envDir, "");
-  const proxyTarget = env.VITE_DEV_PROXY_TARGET || "http://localhost:5000";
+  const proxyTarget = env.VITE_DEV_PROXY_TARGET || "http://localhost:8080";
 
   return {
     plugins: [react(), tailwindcss()],
