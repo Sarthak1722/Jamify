@@ -7,6 +7,18 @@ import {
   notifyPostCreated,
   notifyPostLiked,
 } from "../services/notificationService.js";
+import redis from "../config/redis.js";
+
+const FEED_CACHE_KEY = "feed:all";
+const FEED_CACHE_TTL = 300; // seconds (5 minutes)
+
+async function invalidateFeedCache() {
+  try {
+    await redis.del(FEED_CACHE_KEY);
+  } catch (err) {
+    console.error("[Redis] Failed to invalidate feed cache:", err);
+  }
+}
 
 function inferMediaType(mimetype = "", uploadedResourceType = "") {
   if (mimetype.startsWith("video/") || uploadedResourceType === "video") {
@@ -181,6 +193,7 @@ export const createPost = async (req, res) => {
 
     const populated = await findPostWithAuthor(post._id);
     await notifyPostCreated({ actorId: req.id, postId: post._id });
+    await invalidateFeedCache();
 
     return res.status(201).json({
       success: true,
@@ -199,7 +212,24 @@ export const getFeedPosts = async (req, res) => {
       return res.status(401).json({ message: "User not authenticated." });
     }
 
-    const posts = await listPosts();
+    // Try Redis cache first
+    let posts;
+    try {
+      const cached = await redis.get(FEED_CACHE_KEY);
+      if (cached) {
+        posts = cached; // Upstash auto-deserializes JSON
+      }
+    } catch (redisErr) {
+      console.error("[Redis] Cache read failed, falling back to DB:", redisErr);
+    }
+
+    if (!posts) {
+      posts = await listPosts();
+      // Populate cache in the background — don't block the response
+      redis.set(FEED_CACHE_KEY, posts, { ex: FEED_CACHE_TTL }).catch((err) =>
+        console.error("[Redis] Cache write failed:", err)
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -261,6 +291,7 @@ export const togglePostLike = async (req, res) => {
       ownerId: post.author,
       active: !hasLiked,
     });
+    await invalidateFeedCache();
 
     const populated = await findPostWithAuthor(postId);
 
@@ -306,6 +337,7 @@ export const addPostComment = async (req, res) => {
       commentId: latestComment?._id,
       commentText: latestComment?.text || text,
     });
+    await invalidateFeedCache();
 
     const populated = await findPostWithAuthor(postId);
 
@@ -336,6 +368,7 @@ export const updatePostCaption = async (req, res) => {
 
     post.caption = caption;
     await post.save();
+    await invalidateFeedCache();
 
     const populated = await findPostWithAuthor(postId);
 
@@ -365,6 +398,7 @@ export const deletePost = async (req, res) => {
 
     await destroyPostMedia(post);
     await Post.deleteOne({ _id: postId, author: viewerId });
+    await invalidateFeedCache();
 
     return res.status(200).json({
       success: true,
@@ -394,6 +428,7 @@ export const registerPostShare = async (req, res) => {
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
     }
+    await invalidateFeedCache();
 
     const populated = await findPostWithAuthor(postId);
 
