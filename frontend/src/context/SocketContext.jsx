@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { useSelector } from "react-redux";
 import { SOCKET_URL } from "../config/runtime.js";
 import { SocketContext } from "./socketContextInstance.js";
+import { initTimeSync } from "../services/timeSync.js";
 
 /**
  * One Socket.IO client per logged-in user. Lives in React state only (not Redux).
@@ -29,7 +30,10 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!socket) return undefined;
 
+    const cleanupTimeSync = initTimeSync(socket);
+
     return () => {
+      cleanupTimeSync();
       socket.removeAllListeners();
       socket.disconnect();
     };

@@ -39,6 +39,19 @@ function ensureJoinedRoom(socket, roomId) {
 export function attachPlaybackSocketHandlers(io, socket, userId) {
   if (!userId) return;
 
+  socket.on("timeSyncPing", (payload, callback) => {
+    const serverTime = Date.now();
+    const response = {
+      clientTime: payload?.clientTime,
+      serverTime,
+    };
+    if (typeof callback === "function") {
+      callback(response);
+    } else {
+      socket.emit("timeSyncPong", response);
+    }
+  });
+
   socket.on("playbackJoin", async (payload = {}) => {
     const { peerUserId, roomId: explicitRoom } = payload;
     const roomId = resolveRoomId(userId, { peerUserId, roomId: explicitRoom });

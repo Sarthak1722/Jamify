@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   IoPlay,
@@ -7,7 +7,6 @@ import {
   IoPlaySkipForward,
 } from "react-icons/io5";
 import { usePlaybackActions } from "./usePlaybackActions.js";
-import { usePlaybackAudioSync } from "../../hooks/usePlaybackAudioSync.js";
 import { usePlaybackTimeline } from "../../hooks/usePlaybackTimeline.js";
 import { fetchPlaybackTracks } from "../../api/playbackApi.js";
 import { setPlaybackQueueIndex } from "../../redux/playbackSlice.js";
@@ -30,7 +29,6 @@ function jamSubtitle(activeJam, playbackRoomId) {
 }
 
 const GlobalPlaybackBar = ({ mobile = false }) => {
-  const audioRef = useRef(null);
   const dispatch = useDispatch();
   const playback = useSelector((s) => s.playback);
   const queue = useMemo(() => playback.queue || [], [playback.queue]);
@@ -49,9 +47,6 @@ const GlobalPlaybackBar = ({ mobile = false }) => {
     hasActiveJam,
   } = usePlaybackActions();
 
-  usePlaybackAudioSync(audioRef);
-
-  const [duration, setDuration] = useState(0);
   const [catalog, setCatalog] = useState([]);
   const [, setUiTick] = useState(0);
 
@@ -61,23 +56,6 @@ const GlobalPlaybackBar = ({ mobile = false }) => {
       .then(setCatalog)
       .catch(() => setCatalog([]));
   }, [authUser?._id]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onDur = () => {
-      const nextDuration = Number(el.duration);
-      setDuration(Number.isFinite(nextDuration) && nextDuration > 0 ? nextDuration : 0);
-    };
-
-    onDur();
-    el.addEventListener("loadedmetadata", onDur);
-    el.addEventListener("durationchange", onDur);
-    return () => {
-      el.removeEventListener("loadedmetadata", onDur);
-      el.removeEventListener("durationchange", onDur);
-    };
-  }, [playback.currentTrack?.id]);
 
   useEffect(() => {
     if (!playback.isPlaying) return;
@@ -92,7 +70,7 @@ const GlobalPlaybackBar = ({ mobile = false }) => {
     beginSeeking,
     updateSeeking,
     commitSeeking,
-  } = usePlaybackTimeline(playback, duration, emitSeek);
+  } = usePlaybackTimeline(playback, 0, emitSeek);
 
   const handlePrevTrack = () => {
     if (hasActiveJam) {
@@ -151,8 +129,6 @@ const GlobalPlaybackBar = ({ mobile = false }) => {
   if (mobile) {
     return (
       <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,21,22,0.98),rgba(15,15,16,0.96))] px-3.5 py-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <audio ref={audioRef} preload="auto" className="hidden" onEnded={handleTrackEnd} />
-
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-emerald-500 to-emerald-800 text-sm font-bold text-white shadow-lg shadow-emerald-950/50">
             ♪
@@ -227,8 +203,6 @@ const GlobalPlaybackBar = ({ mobile = false }) => {
 
   return (
     <div className="shrink-0 border-t border-white/[0.08] bg-[#121212]/98 px-4 py-3 backdrop-blur-xl">
-      <audio ref={audioRef} preload="auto" className="hidden" onEnded={handleTrackEnd} />
-
       <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-emerald-600 to-green-900 text-lg font-bold text-white shadow-lg">

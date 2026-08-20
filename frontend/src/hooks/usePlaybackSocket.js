@@ -5,6 +5,7 @@ import { applyPlaybackUpdate, playNext, playPrevious, setPlaybackQueue } from ".
 import { effectivePlaybackTime } from "../utils/playbackTime.js";
 import { getTrackDurationSeconds } from "../utils/trackDuration.js";
 import { normalizePlaybackQueue } from "../utils/playbackTrack.js";
+import { getServerTime } from "../services/timeSync.js";
 
 function jamKey(jam) {
   if (!jam) return "";
@@ -72,7 +73,7 @@ export function usePlaybackSocket() {
     (patch) => {
       if (activeJam) return; // only local when not jamming
       if (!authUser?._id) return;
-      const now = Date.now();
+      const now = getServerTime();
       dispatch(
         applyPlaybackUpdate({
           roomId: null,
@@ -93,7 +94,7 @@ export function usePlaybackSocket() {
       dispatch(
         applyPlaybackUpdate({
           roomId: playback.roomId,
-          serverNow: Date.now(),
+          serverNow: getServerTime(),
           updatedBy: authUserId,
           ...patch,
         }),
@@ -115,7 +116,7 @@ export function usePlaybackSocket() {
     localUpdatePlayback({
       isPlaying: true,
       positionSeconds: effectivePlaybackTime(playback),
-      playheadEpochMs: Date.now(),
+      playheadEpochMs: getServerTime(),
     });
   }, [socket, playback, localUpdatePlayback]);
 
@@ -146,7 +147,7 @@ export function usePlaybackSocket() {
       if (jam) {
         optimisticJamPlaybackUpdate({
           positionSeconds: clampedTime,
-          playheadEpochMs: playback.isPlaying ? Date.now() : null,
+          playheadEpochMs: playback.isPlaying ? getServerTime() : null,
         });
         if (!socket?.connected) return;
         if (jam.kind === "dm") socket.emit("seek", { peerUserId: jam.peerId, time: clampedTime });
@@ -157,7 +158,7 @@ export function usePlaybackSocket() {
       if (!playback.currentTrack) return;
       localUpdatePlayback({
         positionSeconds: clampedTime,
-        playheadEpochMs: playback.isPlaying ? Date.now() : null,
+        playheadEpochMs: playback.isPlaying ? getServerTime() : null,
       });
     },
     [socket, playback, localUpdatePlayback, optimisticJamPlaybackUpdate],
@@ -185,7 +186,7 @@ export function usePlaybackSocket() {
         currentTrack: nextTrack,
         isPlaying: true,
         positionSeconds: 0,
-        playheadEpochMs: Date.now(),
+        playheadEpochMs: getServerTime(),
       });
     },
     [socket, playback, localUpdatePlayback],
@@ -219,7 +220,7 @@ export function usePlaybackSocket() {
         queueIndex: normalizedIndex,
         isPlaying: true,
         positionSeconds: 0,
-        playheadEpochMs: Date.now(),
+        playheadEpochMs: getServerTime(),
       });
     },
     [socket, dispatch, localUpdatePlayback],

@@ -317,11 +317,7 @@ const MessageContainer = () => {
                 </p>
               ) : null}
             </div>
-            {!isGroupThread ? (
-              <div className="mr-3 hidden rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-zinc-500 xl:block">
-                {selectedInitial} • direct line
-              </div>
-            ) : null}
+
             {isGroupThread ? (
               <div ref={groupMenuRef} className="relative mr-2">
                 <button
@@ -452,16 +448,16 @@ const MessageContainer = () => {
             Hi, {authUser?.fullName}
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-zinc-400">
-            Choose one of your added friends from the inbox to start messaging. Direct chats are limited to your friend list now.
+            Choose one of your friends from the inbox to start messaging.
           </p>
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+          {/* <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Quietly active
             </p>
             <p className="mt-1 text-sm text-zinc-300">
               Read receipts, typing states, and jam context are already wired in here.
             </p>
-          </div>
+          </div> */}
         </div>
       )}
       {showRenameGroup && isGroupThread ? (

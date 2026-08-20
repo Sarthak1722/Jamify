@@ -75,29 +75,28 @@ const Signup = () => {
 
   return (
     <AuthShell
-      eyebrow="Create account"
-      title="Start your first jam in minutes."
-      description="Create your profile to unlock synced listening, private group jams, and a more personal home feed."
+      title="Create account"
+      subtitle="Join Jamify to start listening and chatting"
       footerPrompt="Already have an account?"
       footerLinkLabel="Sign in"
       footerLinkTo="/"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="fullName" className={authLabelClassName}>
             Full name
           </label>
           <div className="relative">
-            <IoSparklesOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <IoSparklesOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
             <input
               id="fullName"
-              className={`${authInputClassName} pl-11`}
+              className={`${authInputClassName} pl-10`}
               type="text"
               name="fullName"
               value={userData.fullName}
               onChange={handleChange}
               autoComplete="name"
-              placeholder="How should people know you?"
+              placeholder="Full name"
             />
           </div>
         </div>
@@ -107,71 +106,67 @@ const Signup = () => {
             Username
           </label>
           <div className="relative">
-            <IoPersonOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <IoPersonOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
             <input
               id="userName"
-              className={`${authInputClassName} pl-11`}
+              className={`${authInputClassName} pl-10`}
               type="text"
               name="userName"
               value={userData.userName}
               onChange={handleChange}
               autoComplete="username"
-              placeholder="Choose a unique @handle"
+              placeholder="Username"
             />
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="password" className={authLabelClassName}>
               Password
             </label>
             <div className="relative">
-              <IoLockClosedOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <IoLockClosedOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
               <input
                 id="password"
-                className={`${authInputClassName} pl-11`}
+                className={`${authInputClassName} pl-10`}
                 type="password"
                 name="password"
                 value={userData.password}
                 onChange={handleChange}
                 autoComplete="new-password"
-                placeholder="Minimum 6 characters"
+                placeholder="Password"
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className={authLabelClassName}>
-              Confirm password
+              Confirm
             </label>
             <div className="relative">
-              <IoLockClosedOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <IoLockClosedOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
               <input
                 id="confirmPassword"
-                className={`${authInputClassName} pl-11`}
+                className={`${authInputClassName} pl-10`}
                 type="password"
                 name="confirmPassword"
                 value={userData.confirmPassword}
                 onChange={handleChange}
                 autoComplete="new-password"
-                placeholder="Repeat your password"
+                placeholder="Confirm"
               />
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm leading-6 text-zinc-400">
-          Your profile photo is generated automatically for now, so account creation stays quick and friction-free.
-        </div>
-
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-emerald-500/20"
         >
           {submitting ? "Creating account..." : "Create account"}
-          {!submitting ? <IoArrowForward className="text-base" /> : null}
+          {!submitting ? <IoArrowForward className="text-sm" /> : null}
         </button>
       </form>
     </AuthShell>
@@ -179,3 +174,4 @@ const Signup = () => {
 };
 
 export default Signup;
+

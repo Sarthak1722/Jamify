@@ -225,6 +225,19 @@ io.on("connection", (socket) => {
     console.error("presence broadcast failed", error);
   });
 
+  socket.on("timeSyncPing", (payload, callback) => {
+    const serverTime = Date.now();
+    const response = {
+      clientTime: payload?.clientTime,
+      serverTime,
+    };
+    if (typeof callback === "function") {
+      callback(response);
+    } else {
+      socket.emit("timeSyncPong", response);
+    }
+  });
+
   attachPlaybackSocketHandlers(io, socket, userId);
 
   socket.on("presenceSync", () => {

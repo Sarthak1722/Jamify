@@ -69,29 +69,28 @@ const Login = () => {
 
   return (
     <AuthShell
-      eyebrow="Welcome back"
-      title="Sign in to your listening world."
-      description="Pick up your conversations, playlists, and live jam sessions exactly where you left them."
-      footerPrompt="New here?"
-      footerLinkLabel="Create an account"
+      title="Welcome back"
+      subtitle="Enter your credentials to sign in"
+      footerPrompt="Don't have an account?"
+      footerLinkLabel="Sign up"
       footerLinkTo="/register"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="userName" className={authLabelClassName}>
             Username
           </label>
           <div className="relative">
-            <IoPersonOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <IoPersonOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
             <input
               id="userName"
-              className={`${authInputClassName} pl-11`}
+              className={`${authInputClassName} pl-10`}
               type="text"
               name="userName"
               value={userData.userName}
               autoComplete="username"
               onChange={handleChange}
-              placeholder="Enter your username"
+              placeholder="Username"
             />
           </div>
         </div>
@@ -101,16 +100,16 @@ const Login = () => {
             Password
           </label>
           <div className="relative">
-            <IoLockClosedOutline className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <IoLockClosedOutline className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-zinc-500" />
             <input
               id="password"
-              className={`${authInputClassName} pl-11`}
+              className={`${authInputClassName} pl-10`}
               type="password"
               name="password"
               value={userData.password}
               autoComplete="current-password"
               onChange={handleChange}
-              placeholder="Enter your password"
+              placeholder="Password"
             />
           </div>
         </div>
@@ -118,10 +117,10 @@ const Login = () => {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-emerald-500/20"
         >
           {submitting ? "Signing in..." : "Sign in"}
-          {!submitting ? <IoArrowForward className="text-base" /> : null}
+          {!submitting ? <IoArrowForward className="text-sm" /> : null}
         </button>
       </form>
     </AuthShell>
@@ -129,3 +128,4 @@ const Login = () => {
 };
 
 export default Login;
+
